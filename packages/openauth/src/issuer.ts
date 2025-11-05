@@ -519,6 +519,14 @@ export function issuer<
     >
   }[keyof Providers],
 >(input: IssuerInput<Providers, Subjects, Result>) {
+  // Default TTL constants (in seconds)
+  const DEFAULT_ACCESS_TOKEN_TTL = 60 * 60 * 24 * 30 // 30 days
+  const DEFAULT_REFRESH_TOKEN_TTL = 60 * 60 * 24 * 365 // 1 year
+  const DEFAULT_REFRESH_REUSE_WINDOW = 60 // 60 seconds
+  const DEFAULT_REFRESH_RETENTION = 0 // No retention
+  const AUTHORIZATION_CODE_TTL = 60 // 60 seconds
+  const AUTHORIZATION_COOKIE_TTL = 60 * 60 * 24 // 24 hours
+
   const error =
     input.error ??
     function (err) {
@@ -529,10 +537,10 @@ export function issuer<
         },
       })
     }
-  const ttlAccess = input.ttl?.access ?? 60 * 60 * 24 * 30
-  const ttlRefresh = input.ttl?.refresh ?? 60 * 60 * 24 * 365
-  const ttlRefreshReuse = input.ttl?.reuse ?? 60
-  const ttlRefreshRetention = input.ttl?.retention ?? 0
+  const ttlAccess = input.ttl?.access ?? DEFAULT_ACCESS_TOKEN_TTL
+  const ttlRefresh = input.ttl?.refresh ?? DEFAULT_REFRESH_TOKEN_TTL
+  const ttlRefreshReuse = input.ttl?.reuse ?? DEFAULT_REFRESH_REUSE_WINDOW
+  const ttlRefreshRetention = input.ttl?.retention ?? DEFAULT_REFRESH_RETENTION
   if (input.theme) {
     setTheme(input.theme)
   }
@@ -644,7 +652,7 @@ export function issuer<
                     refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
                   },
                 },
-                60,
+                AUTHORIZATION_CODE_TTL,
               )
               const location = new URL(authorization.redirect_uri)
               location.searchParams.set("code", code)
@@ -1045,7 +1053,7 @@ export function issuer<
             payload,
             ttlRefreshReuse + ttlRefreshRetention,
           )
-        } else if (Date.now() > payload.timeUsed + ttlRefreshReuse * 1000) {
+        } else if (Date.now() > (payload.timeUsed ?? Date.now()) + ttlRefreshReuse * 1000) {
           // token was reused past the allowed interval
           await auth.invalidate(subject)
 
@@ -1197,7 +1205,7 @@ export function issuer<
       ))
     )
       throw new UnauthorizedClientError(client_id, redirect_uri)
-    await auth.set(c, "authorization", 60 * 60 * 24, authorization)
+    await auth.set(c, "authorization", AUTHORIZATION_COOKIE_TTL, authorization)
     if (provider) return c.redirect(`/${provider}/authorize`)
     const providers = Object.keys(input.providers)
     if (providers.length === 1) return c.redirect(`/${providers[0]}/authorize`)
@@ -1272,6 +1280,106 @@ export function issuer<
     })
   })
 
+  /**
+   * Helper function to extract and validate client credentials from request.
+   * Supports both Authorization header (Basic auth) and form data.
+   */
+  function extractClientCredentials(c: Context, form: FormData): {
+    clientId?: string
+    clientSecret?: string
+    error?: Response
+  } {
+    const authHeader = c.req.header("Authorization")
+    let clientId: string | undefined
+    let clientSecret: string | undefined
+
+    if (authHeader) {
+      const [type, credentials] = authHeader.split(" ")
+      if (type === "Basic" && credentials) {
+        try {
+          const decoded = atob(credentials)
+          const colonIndex = decoded.indexOf(":")
+          if (colonIndex === -1) {
+            return {
+              error: c.json(
+                {
+                  error: "invalid_client",
+                  error_description: "Invalid client credentials format",
+                },
+                401,
+              ),
+            }
+          }
+          clientId = decoded.substring(0, colonIndex)
+          clientSecret = decoded.substring(colonIndex + 1)
+        } catch (error) {
+          console.error("Failed to decode Basic auth:", error)
+          return {
+            error: c.json(
+              {
+                error: "invalid_client",
+                error_description: "Invalid Authorization header encoding",
+              },
+              401,
+            ),
+          }
+        }
+      }
+    }
+
+    // Fall back to form data if not in header
+    if (!clientId || !clientSecret) {
+      clientId = form.get("client_id")?.toString()
+      clientSecret = form.get("client_secret")?.toString()
+    }
+
+    if (!clientId || !clientSecret) {
+      return {
+        error: c.json(
+          {
+            error: "invalid_request",
+            error_description: "Client authentication required",
+          },
+          401,
+        ),
+      }
+    }
+
+    return { clientId, clientSecret }
+  }
+
+  /**
+   * Simple rate limiting using sliding window.
+   * Tracks requests per client_id with configurable limits.
+   */
+  async function checkRateLimit(
+    clientId: string,
+    endpoint: string,
+    limit: number = 60, // requests per minute
+    window: number = 60, // seconds
+  ): Promise<boolean> {
+    const now = Date.now()
+    const key = ["ratelimit", endpoint, clientId]
+
+    // Get current request log
+    const log = (await Storage.get<number[]>(storage, key)) || []
+
+    // Remove old entries (outside the window)
+    const windowStart = now - window * 1000
+    const recentRequests = log.filter((timestamp) => timestamp > windowStart)
+
+    // Check if limit exceeded
+    if (recentRequests.length >= limit) {
+      return false
+    }
+
+    // Add current request and save
+    recentRequests.push(now)
+    await Storage.set(storage, key, recentRequests, window)
+
+    return true
+  }
+
   // RFC 7662: Token Introspection Endpoint
   app.post("/token/introspect", async (c) => {
     // Client authentication is required for introspection
@@ -1299,43 +1407,16 @@ export function issuer<
       )
     }
 
-    // Extract client credentials for authentication
-    const authHeader = c.req.header("Authorization")
-    let clientId: string | undefined
-    let clientSecret: string | undefined
-
-    if (authHeader) {
-      const [type, credentials] = authHeader.split(" ")
-      if (type === "Basic" && credentials) {
-        try {
-          const decoded = atob(credentials)
-          ;[clientId, clientSecret] = decoded.split(":")
-        } catch (error) {
-          console.error("Failed to decode Basic auth:", error)
-        }
-      }
-    }
-
-    // Fall back to form data if not in header
-    if (!clientId || !clientSecret) {
-      clientId = form.get("client_id")?.toString()
-      clientSecret = form.get("client_secret")?.toString()
-    }
-
-    if (!clientId || !clientSecret) {
-      return c.json(
-        {
-          error: "invalid_request",
-          error_description: "Client authentication required",
-        },
-        401,
-      )
+    // Extract and validate client credentials
+    const credentials = extractClientCredentials(c, form)
+    if (credentials.error) {
+      return credentials.error
     }
 
     // Authenticate the client
     const client = await clientAuthenticator.authenticateClient(
-      clientId,
-      clientSecret,
+      credentials.clientId!,
+      credentials.clientSecret!,
     )
     if (!client) {
       return c.json(
@@ -1344,6 +1425,21 @@ export function issuer<
           error_description: "Client authentication failed",
         },
         401,
+      )
+    }
+
+    // Apply rate limiting (60 requests per minute per client)
+    const allowed = await checkRateLimit(
+      credentials.clientId!,
+      "token_introspect",
+    )
+    if (!allowed) {
+      return c.json(
+        {
+          error: "slow_down",
+          error_description: "Rate limit exceeded. Please try again later.",
+        },
+        429,
       )
     }
 
@@ -1360,6 +1456,13 @@ export function issuer<
       // Extract JTI from token for revocation check
       const tokenId = result.payload.jti as string
       if (!tokenId) {
+        return c.json({ active: false })
+      }
+
+      // Scope validation: Verify the client has permission to introspect this token
+      // Only allow introspection if the token was issued to the requesting client
+      if (result.payload.aud !== credentials.clientId) {
+        // Per RFC 7662, return inactive for tokens the client shouldn't see
         return c.json({ active: false })
       }
 
@@ -1420,43 +1523,16 @@ export function issuer<
       )
     }
 
-    // Extract client credentials for authentication
-    const authHeader = c.req.header("Authorization")
-    let clientId: string | undefined
-    let clientSecret: string | undefined
-
-    if (authHeader) {
-      const [type, credentials] = authHeader.split(" ")
-      if (type === "Basic" && credentials) {
-        try {
-          const decoded = atob(credentials)
-          ;[clientId, clientSecret] = decoded.split(":")
-        } catch (error) {
-          console.error("Failed to decode Basic auth:", error)
-        }
-      }
-    }
-
-    // Fall back to form data if not in header
-    if (!clientId || !clientSecret) {
-      clientId = form.get("client_id")?.toString()
-      clientSecret = form.get("client_secret")?.toString()
-    }
-
-    if (!clientId || !clientSecret) {
-      return c.json(
-        {
-          error: "invalid_request",
-          error_description: "Client authentication required",
-        },
-        401,
-      )
+    // Extract and validate client credentials
+    const credentials = extractClientCredentials(c, form)
+    if (credentials.error) {
+      return credentials.error
     }
 
     // Authenticate the client
     const client = await clientAuthenticator.authenticateClient(
-      clientId,
-      clientSecret,
+      credentials.clientId!,
+      credentials.clientSecret!,
     )
     if (!client) {
       return c.json(
@@ -1465,6 +1541,18 @@ export function issuer<
           error_description: "Client authentication failed",
         },
         401,
+      )
+    }
+
+    // Apply rate limiting (60 requests per minute per client)
+    const allowed = await checkRateLimit(credentials.clientId!, "token_revoke")
+    if (!allowed) {
+      return c.json(
+        {
+          error: "slow_down",
+          error_description: "Rate limit exceeded. Please try again later.",
+        },
+        429,
       )
     }
 
@@ -1484,7 +1572,7 @@ export function issuer<
             token_id: tokenId,
             subject,
             event_type: "revoked",
-            client_id: clientId,
+            client_id: credentials.clientId!,
             timestamp: Date.now(),
           })
         }
@@ -1520,7 +1608,7 @@ export function issuer<
           token_id: tokenId,
           subject: result.payload.sub as string,
           event_type: "revoked",
-          client_id: clientId,
+          client_id: credentials.clientId!,
           timestamp: Date.now(),
         })
       }
