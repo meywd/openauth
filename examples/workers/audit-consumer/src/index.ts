@@ -15,15 +15,16 @@
  * - One for audit consumer (queue only)
  */
 
-import { issuer } from "openauth"
-import { AuditService } from "openauth/services/audit"
-import { D1ClientAdapter } from "openauth/client/d1-adapter"
-import { ClientAuthenticator } from "openauth/client/authenticator"
 import {
   handleAuditBatch,
   type AuditEventMessage,
 } from "openauth/services/audit-consumer"
-// Import your subjects and providers
+
+// Uncomment these when you configure your issuer:
+// import { issuer } from "openauth"
+// import { AuditService } from "openauth/services/audit"
+// import { D1ClientAdapter } from "openauth/client/d1-adapter"
+// import { ClientAuthenticator } from "openauth/client/authenticator"
 // import { subjects } from "./subjects"
 // import { GoogleProvider } from "openauth/provider/google"
 
@@ -38,7 +39,10 @@ export default {
    * HTTP handler - OAuth issuer
    */
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Configure client adapter
+    // Example: Configure your issuer with audit service
+    // Uncomment and customize for your use case:
+
+    /*
     const clientAdapter = new D1ClientAdapter({
       database: env.DB,
     })
@@ -47,22 +51,24 @@ export default {
       adapter: clientAdapter,
     })
 
-    // Configure audit service with queue (optional)
     const auditService = new AuditService({
       database: env.AUDIT_DB,
       queue: env.AUDIT_QUEUE, // Optional - enables queue-based logging
     })
 
-    // Create issuer
     const app = issuer({
-      // subjects,
-      // providers: {
-      //   google: GoogleProvider({ ... })
-      // },
-      // ... other issuer config
+      subjects,
+      providers: {
+        google: GoogleProvider({ ... })
+      },
+      // Pass authenticator and auditService to your issuer config
     })
 
     return app.fetch(request, env)
+    */
+
+    // Placeholder response - replace with your actual issuer
+    return new Response("Configure your OAuth issuer here", { status: 501 })
   },
 
   /**
