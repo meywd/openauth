@@ -902,6 +902,7 @@ export function issuer<
         token_endpoint: `${iss}/token`,
         jwks_uri: `${iss}/.well-known/jwks.json`,
         response_types_supported: ["code", "token"],
+        grant_types_supported: ["authorization_code", "refresh_token", "client_credentials"],
       })
     },
   )
@@ -1001,6 +1002,7 @@ export function issuer<
         await Storage.remove(storage, key)
         return c.json({
           access_token: tokens.access,
+          token_type: "bearer",
           expires_in: tokens.expiresIn,
           refresh_token: tokens.refresh,
         })
@@ -1093,6 +1095,7 @@ export function issuer<
 
         return c.json({
           access_token: tokens.access,
+          token_type: "bearer",
           refresh_token: tokens.refresh,
           expires_in: tokens.expiresIn,
         })
@@ -1358,6 +1361,8 @@ export function issuer<
     limit: number = 60, // requests per minute
     window: number = 60, // seconds
   ): Promise<boolean> {
+    if (!storage) return true // Skip rate limiting if no storage
+
     const now = Date.now()
     const key = ["ratelimit", endpoint, clientId]
 

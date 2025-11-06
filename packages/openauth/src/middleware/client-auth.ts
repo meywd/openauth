@@ -159,7 +159,7 @@ export function clientAuth(options: ClientAuthMiddlewareOptions) {
 						error: error.code,
 						error_description: error.message,
 					},
-					error.status,
+					error.status as any,
 				)
 			}
 
