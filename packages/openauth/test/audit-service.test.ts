@@ -203,7 +203,7 @@ describe("AuditService", () => {
 
       const prepareSpy = spyOn(mockDb, "prepare")
 
-      const results = await service.getTokenAnalytics(subject, 100)
+      await service.getTokenAnalytics(subject, 100)
 
       expect(prepareSpy).toHaveBeenCalled()
       const sql = prepareSpy.mock.calls[0][0]

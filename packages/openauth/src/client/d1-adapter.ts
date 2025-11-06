@@ -74,18 +74,24 @@ export class D1ClientAdapter {
 
             if (!result) return null
 
-            // Parse JSON fields
-            return {
-              ...result,
-              redirect_uris: result.redirect_uris
-                ? JSON.parse(result.redirect_uris as any)
-                : undefined,
-              grant_types: result.grant_types
-                ? JSON.parse(result.grant_types as any)
-                : undefined,
-              scopes: result.scopes
-                ? JSON.parse(result.scopes as any)
-                : undefined,
+            // Parse JSON fields with error handling
+            try {
+              return {
+                ...result,
+                redirect_uris: result.redirect_uris
+                  ? JSON.parse(result.redirect_uris as any)
+                  : undefined,
+                grant_types: result.grant_types
+                  ? JSON.parse(result.grant_types as any)
+                  : undefined,
+                scopes: result.scopes
+                  ? JSON.parse(result.scopes as any)
+                  : undefined,
+              }
+            } catch (parseError) {
+              throw new Error(
+                `Invalid JSON in client fields for client ${clientId}: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+              )
             }
           },
           this.retryConfig,
@@ -298,18 +304,26 @@ export class D1ClientAdapter {
 
             if (!result.results) return []
 
-            return result.results.map((client) => ({
-              ...client,
-              redirect_uris: client.redirect_uris
-                ? JSON.parse(client.redirect_uris as any)
-                : undefined,
-              grant_types: client.grant_types
-                ? JSON.parse(client.grant_types as any)
-                : undefined,
-              scopes: client.scopes
-                ? JSON.parse(client.scopes as any)
-                : undefined,
-            }))
+            return result.results.map((client) => {
+              try {
+                return {
+                  ...client,
+                  redirect_uris: client.redirect_uris
+                    ? JSON.parse(client.redirect_uris as any)
+                    : undefined,
+                  grant_types: client.grant_types
+                    ? JSON.parse(client.grant_types as any)
+                    : undefined,
+                  scopes: client.scopes
+                    ? JSON.parse(client.scopes as any)
+                    : undefined,
+                }
+              } catch (parseError) {
+                throw new Error(
+                  `Invalid JSON in client fields for client ${client.client_id}: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+                )
+              }
+            })
           },
           this.retryConfig,
         ),

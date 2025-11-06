@@ -4,7 +4,6 @@ import {
   describe,
   beforeEach,
   mock,
-  spyOn,
 } from "bun:test"
 import {
   MultiRegionD1ClientAdapter,

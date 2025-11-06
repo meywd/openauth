@@ -288,6 +288,7 @@ describe("RevocationService", () => {
 
       // Verify expired token is removed
       const expiredResult = await service.isAccessTokenRevoked(expiredToken)
+      expect(expiredResult).toBe(false)
 
       // Verify valid token still exists
       const validResult = await service.isAccessTokenRevoked(validToken)

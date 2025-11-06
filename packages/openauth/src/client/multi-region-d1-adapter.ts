@@ -88,18 +88,24 @@ export class MultiRegionD1ClientAdapter {
 
             if (!result) return null
 
-            // Parse JSON fields
-            return {
-              ...result,
-              redirect_uris: result.redirect_uris
-                ? JSON.parse(result.redirect_uris as any)
-                : undefined,
-              grant_types: result.grant_types
-                ? JSON.parse(result.grant_types as any)
-                : undefined,
-              scopes: result.scopes
-                ? JSON.parse(result.scopes as any)
-                : undefined,
+            // Parse JSON fields with error handling
+            try {
+              return {
+                ...result,
+                redirect_uris: result.redirect_uris
+                  ? JSON.parse(result.redirect_uris as any)
+                  : undefined,
+                grant_types: result.grant_types
+                  ? JSON.parse(result.grant_types as any)
+                  : undefined,
+                scopes: result.scopes
+                  ? JSON.parse(result.scopes as any)
+                  : undefined,
+              }
+            } catch (parseError) {
+              throw new Error(
+                `Invalid JSON in client fields for client ${clientId}: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+              )
             }
           },
           this.retryConfig,
@@ -368,18 +374,26 @@ export class MultiRegionD1ClientAdapter {
 
             if (!result.results) return []
 
-            return result.results.map((client) => ({
-              ...client,
-              redirect_uris: client.redirect_uris
-                ? JSON.parse(client.redirect_uris as any)
-                : undefined,
-              grant_types: client.grant_types
-                ? JSON.parse(client.grant_types as any)
-                : undefined,
-              scopes: client.scopes
-                ? JSON.parse(client.scopes as any)
-                : undefined,
-            }))
+            return result.results.map((client) => {
+              try {
+                return {
+                  ...client,
+                  redirect_uris: client.redirect_uris
+                    ? JSON.parse(client.redirect_uris as any)
+                    : undefined,
+                  grant_types: client.grant_types
+                    ? JSON.parse(client.grant_types as any)
+                    : undefined,
+                  scopes: client.scopes
+                    ? JSON.parse(client.scopes as any)
+                    : undefined,
+                }
+              } catch (parseError) {
+                throw new Error(
+                  `Invalid JSON in client fields for client ${client.client_id}: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+                )
+              }
+            })
           },
           this.retryConfig,
         ),
@@ -412,7 +426,11 @@ export class MultiRegionD1ClientAdapter {
  * Apply a sync message to a D1 database
  * Used by queue consumer to replicate changes across regions
  *
- * Uses INSERT OR REPLACE with timestamp-based conflict resolution (Last-Write-Wins)
+ * Implements Last-Write-Wins conflict resolution using:
+ * - INSERT OR IGNORE: Attempts to create new record (ignored if exists)
+ * - UPDATE with timestamp check: Only updates if incoming message is newer
+ *
+ * This ensures out-of-order replication messages don't overwrite newer data.
  */
 export async function applySyncMessage(
   db: D1Database,
@@ -424,23 +442,25 @@ export async function applySyncMessage(
   switch (message.operation) {
     case "create":
       if (!message.data) {
-        throw new Error("Create operation requires data")
+        throw new Error(
+          `Create operation requires data for client ${message.client_id} at ${message.timestamp}`,
+        )
       }
 
-      // INSERT OR REPLACE with timestamp check (Last-Write-Wins)
+      // Last-Write-Wins conflict resolution strategy:
+      // 1. INSERT OR IGNORE: Creates record only if it doesn't exist
+      // 2. UPDATE with timestamp check: Only updates if incoming timestamp is newer
+      // This ensures that out-of-order replication messages don't overwrite newer data
+
+      // Step 1: Try to insert (will be ignored if client_id already exists)
       await db
         .prepare(
           `
-          INSERT OR REPLACE INTO ${validatedTable} (
+          INSERT OR IGNORE INTO ${validatedTable} (
             client_id, client_secret_hash, client_name,
             redirect_uris, grant_types, scopes,
             created_at, updated_at
-          )
-          SELECT ?, ?, ?, ?, ?, ?, ?, ?
-          WHERE NOT EXISTS (
-            SELECT 1 FROM ${validatedTable}
-            WHERE client_id = ? AND updated_at > ?
-          )
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         )
         .bind(
@@ -456,8 +476,38 @@ export async function applySyncMessage(
           message.data.scopes ? JSON.stringify(message.data.scopes) : null,
           message.timestamp,
           message.timestamp,
-          message.client_id, // for WHERE EXISTS check
-          message.timestamp, // for timestamp comparison
+        )
+        .run()
+
+      // Step 2: Update existing record only if incoming message is newer
+      await db
+        .prepare(
+          `
+          UPDATE ${validatedTable}
+          SET
+            client_secret_hash = ?,
+            client_name = ?,
+            redirect_uris = ?,
+            grant_types = ?,
+            scopes = ?,
+            updated_at = ?
+          WHERE client_id = ?
+            AND updated_at < ?
+        `,
+        )
+        .bind(
+          message.data.client_secret_hash,
+          message.data.client_name,
+          message.data.redirect_uris
+            ? JSON.stringify(message.data.redirect_uris)
+            : null,
+          message.data.grant_types
+            ? JSON.stringify(message.data.grant_types)
+            : null,
+          message.data.scopes ? JSON.stringify(message.data.scopes) : null,
+          message.timestamp,
+          message.client_id,
+          message.timestamp, // Only update if existing updated_at < incoming timestamp
         )
         .run()
       break

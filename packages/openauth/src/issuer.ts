@@ -761,8 +761,11 @@ export function issuer<
       /**
        * Generate and store the next refresh token after the one we are currently returning.
        * Reserving these in advance avoids concurrency issues with multiple refreshes.
-       * Similar treatment should be given to any other values that may have race conditions,
-       * for example if a jti claim was added to the access token.
+       *
+       * The access token includes a `jti` (JWT ID) claim which is used for token revocation tracking.
+       * This allows access tokens to be revoked before expiration via the /token/revoke endpoint (RFC 7009).
+       * The jti is stored in the revocation list when a token is explicitly revoked, and checked during
+       * token introspection to determine if the token is still active.
        */
       const refreshValue = {
         ...value,
@@ -1055,7 +1058,7 @@ export function issuer<
             payload,
             ttlRefreshReuse + ttlRefreshRetention,
           )
-        } else if (Date.now() > (payload.timeUsed ?? Date.now()) + ttlRefreshReuse * 1000) {
+        } else if (payload.timeUsed !== undefined && Date.now() > payload.timeUsed + ttlRefreshReuse * 1000) {
           // token was reused past the allowed interval
           await auth.invalidate(subject)
 
@@ -1400,7 +1403,6 @@ export function issuer<
 
     const form = await c.req.formData()
     const token = form.get("token")?.toString()
-    const tokenTypeHint = form.get("token_type_hint")?.toString()
 
     if (!token) {
       return c.json(
@@ -1464,8 +1466,22 @@ export function issuer<
         return c.json({ active: false })
       }
 
-      // Scope validation: Verify the client has permission to introspect this token
-      // Only allow introspection if the token was issued to the requesting client
+      /**
+       * Authorization Policy (RFC 7662 Section 2.2):
+       *
+       * Only the client (audience) that the token was issued to is allowed to introspect it.
+       * This follows the principle of least privilege - clients should only be able to verify
+       * tokens that were issued for their use.
+       *
+       * Per RFC 7662, when a client attempts to introspect a token they're not authorized to see,
+       * the endpoint returns { active: false } rather than an error, preventing information disclosure
+       * about the existence or validity of tokens issued to other clients.
+       *
+       * Alternative policies could include:
+       * - Allowing introspection based on client trust levels (e.g., resource servers)
+       * - Implementing scope-based authorization for privileged clients
+       * - Using token ownership tracking for multi-tenant scenarios
+       */
       if (result.payload.aud !== credentials.clientId) {
         // Per RFC 7662, return inactive for tokens the client shouldn't see
         return c.json({ active: false })

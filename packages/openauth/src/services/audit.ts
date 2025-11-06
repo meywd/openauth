@@ -94,15 +94,20 @@ function parseMetadata(raw: string | null): TokenMetadata | undefined {
 }
 
 /**
+ * Valid event types set for efficient validation
+ */
+const VALID_EVENT_TYPES = new Set<TokenEventType>([
+  "generated",
+  "refreshed",
+  "revoked",
+  "reused",
+])
+
+/**
  * Validate event type
  */
 function isValidEventType(value: string): value is TokenEventType {
-  return (
-    value === "generated" ||
-    value === "refreshed" ||
-    value === "revoked" ||
-    value === "reused"
-  )
+  return VALID_EVENT_TYPES.has(value as TokenEventType)
 }
 
 /**
@@ -124,6 +129,9 @@ function rowToEvent(row: D1TokenUsageRow): TokenUsageEvent {
 export class AuditService {
   private db: D1Database
   private tableName: string
+  private failureCount = 0
+  private successCount = 0
+  private lastFailureTime: number | null = null
 
   constructor(config: AuditServiceConfig) {
     this.db = config.database
@@ -159,9 +167,27 @@ export class AuditService {
           event.metadata ? JSON.stringify(event.metadata) : null,
         )
         .run()
+
+      // Track success
+      this.successCount++
     } catch (error) {
+      // Track failure for metrics
+      this.failureCount++
+      this.lastFailureTime = Date.now()
+
       // Log error but don't fail the OAuth flow
       console.error("AuditService: Failed to log token usage:", error)
+
+      // Alert if failure rate is high (>10% of last 100 operations)
+      const totalOperations = this.successCount + this.failureCount
+      if (totalOperations >= 100) {
+        const failureRate = this.failureCount / totalOperations
+        if (failureRate > 0.1) {
+          console.warn(
+            `AuditService: High failure rate detected: ${(failureRate * 100).toFixed(2)}% (${this.failureCount}/${totalOperations} failed)`,
+          )
+        }
+      }
     }
   }
 
@@ -309,5 +335,39 @@ export class AuditService {
       console.error("AuditService: Failed to clean expired logs:", error)
       return 0
     }
+  }
+
+  /**
+   * Get audit logging metrics
+   * Returns statistics about audit logging success/failure rates
+   */
+  getMetrics(): {
+    successCount: number
+    failureCount: number
+    totalOperations: number
+    failureRate: number
+    lastFailureTime: number | null
+  } {
+    const totalOperations = this.successCount + this.failureCount
+    const failureRate =
+      totalOperations > 0 ? this.failureCount / totalOperations : 0
+
+    return {
+      successCount: this.successCount,
+      failureCount: this.failureCount,
+      totalOperations,
+      failureRate,
+      lastFailureTime: this.lastFailureTime,
+    }
+  }
+
+  /**
+   * Reset metrics counters
+   * Useful for periodic metric reporting systems
+   */
+  resetMetrics(): void {
+    this.successCount = 0
+    this.failureCount = 0
+    this.lastFailureTime = null
   }
 }
