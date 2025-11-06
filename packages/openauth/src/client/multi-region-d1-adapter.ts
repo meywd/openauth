@@ -1,10 +1,34 @@
 /**
  * Multi-Region D1 Client Adapter for OpenAuth
  *
- * Provides globally distributed storage for OAuth client credentials using
- * multiple regional D1 instances with queue-based replication.
+ * @deprecated This adapter is deprecated and will be removed in a future version.
  *
- * Architecture:
+ * **Reason**: Cloudflare D1 automatically replicates databases globally. This custom
+ * multi-region adapter adds unnecessary complexity for most use cases.
+ *
+ * **Migration**: Use the simple `D1ClientAdapter` instead:
+ * ```typescript
+ * // OLD (deprecated):
+ * import { MultiRegionD1ClientAdapter } from 'openauth/client/multi-region-d1-adapter'
+ * const adapter = new MultiRegionD1ClientAdapter({
+ *   localDb: env.DB,
+ *   syncQueue: env.SYNC_QUEUE
+ * })
+ *
+ * // NEW (recommended):
+ * import { D1ClientAdapter } from 'openauth/client/d1-adapter'
+ * const adapter = new D1ClientAdapter({
+ *   database: env.DB
+ * })
+ * ```
+ *
+ * Cloudflare handles global replication automatically - you get:
+ * - Fast local reads (automatic)
+ * - Global write propagation (automatic)
+ * - No queue management required
+ * - Simpler code and configuration
+ *
+ * **Original Architecture** (for reference):
  * - Reads: Always from local D1 (5ms latency)
  * - Writes: Local D1 + queue message for async replication
  * - Sync: Queue consumer replicates to all other regions (5-10s propagation)
@@ -60,6 +84,13 @@ export class MultiRegionD1ClientAdapter {
   private circuitBreaker: CircuitBreaker
 
   constructor(options: MultiRegionD1Options) {
+    // Deprecation warning
+    console.warn(
+      "MultiRegionD1ClientAdapter is deprecated and will be removed in a future version. " +
+        "Use D1ClientAdapter instead - Cloudflare handles global replication automatically. " +
+        "See https://github.com/meywd/openauth for migration guide.",
+    )
+
     this.db = options.localDb
     this.syncQueue = options.syncQueue
     this.tableName = SQLValidator.validateTableName(
