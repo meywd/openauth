@@ -1046,11 +1046,11 @@ export function issuer<
             400,
           )
         }
-        const generateRefreshToken = !payload.timeUsed
+        const generateRefreshToken = payload.timeUsed === undefined
         if (ttlRefreshReuse <= 0) {
           // no reuse interval, remove the refresh token immediately
           await Storage.remove(storage, key)
-        } else if (!payload.timeUsed) {
+        } else if (payload.timeUsed === undefined) {
           payload.timeUsed = Date.now()
           await Storage.set(
             storage,
@@ -1058,7 +1058,7 @@ export function issuer<
             payload,
             ttlRefreshReuse + ttlRefreshRetention,
           )
-        } else if (payload.timeUsed !== undefined && Date.now() > payload.timeUsed + ttlRefreshReuse * 1000) {
+        } else if (Date.now() > payload.timeUsed + ttlRefreshReuse * 1000) {
           // token was reused past the allowed interval
           await auth.invalidate(subject)
 

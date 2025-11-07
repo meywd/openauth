@@ -35,6 +35,7 @@ export class SQLValidator {
   private static readonly ALLOWED_TABLES = new Set([
     "oauth_clients",
     "token_usage",
+    "jwt_keys",
   ])
 
   /**

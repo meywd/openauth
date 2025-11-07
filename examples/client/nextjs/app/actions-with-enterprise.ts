@@ -17,7 +17,6 @@ import {
   logout as logoutWithRevocation,
   validateToken,
   setTokens,
-  clearTokens,
   checkIntrospectionAvailability,
   checkRevocationAvailability,
 } from "./auth-with-enterprise"

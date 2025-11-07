@@ -66,9 +66,12 @@ CREATE TABLE token_usage (
   metadata TEXT
 );
 
-CREATE INDEX idx_token_usage_subject ON token_usage(subject);
-CREATE INDEX idx_token_usage_token_id ON token_usage(token_id);
-CREATE INDEX idx_token_usage_timestamp ON token_usage(timestamp);
+CREATE INDEX IF NOT EXISTS idx_subject ON token_usage(subject);
+CREATE INDEX IF NOT EXISTS idx_token_id ON token_usage(token_id);
+CREATE INDEX IF NOT EXISTS idx_event_type ON token_usage(event_type);
+CREATE INDEX IF NOT EXISTS idx_timestamp ON token_usage(timestamp);
+CREATE INDEX IF NOT EXISTS idx_subject_timestamp ON token_usage(subject, timestamp);
+CREATE INDEX IF NOT EXISTS idx_client_id ON token_usage(client_id);
 ```
 
 ### 2. Create Queue
