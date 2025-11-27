@@ -78,7 +78,7 @@ export class RevocationService {
 				this.storage,
 				key,
 			)
-			return result !== null
+			return result != null
 		} catch (error) {
 			console.error(
 				"RevocationService: Failed to check revocation status:",
