@@ -7,11 +7,11 @@ import type { ClientSyncMessage } from "../src/client/multi-region-d1-adapter.js
 
 // Mock D1 database
 const createMockD1 = () => ({
-  prepare: (sql: string) => ({
+  prepare: mock((sql: string) => ({
     bind: (...params: any[]) => ({
       run: mock(() => Promise.resolve({ success: true, meta: { changes: 1 } })),
     }),
-  }),
+  })),
 })
 
 // Mock message batch
@@ -253,7 +253,7 @@ describe("processClientSyncBatch", () => {
     expect(batch.messages[0].retry).toHaveBeenCalled()
   })
 
-  test("uses custom table name when provided", async () => {
+  test("rejects invalid custom table names for security", async () => {
     const syncMessage: ClientSyncMessage = {
       operation: "create",
       client_id: "new-client",
@@ -269,14 +269,13 @@ describe("processClientSyncBatch", () => {
     }
 
     const batch = createMockBatch([syncMessage])
-    const customTableName = "custom_oauth_clients"
+    const invalidTableName = "custom_oauth_clients"
 
-    await processClientSyncBatch(batch, env, customTableName)
+    // Should fail because custom table names are blocked by SQLValidator
+    await processClientSyncBatch(batch, env, invalidTableName)
 
-    // Verify custom table name was used (would need to check SQL string)
-    expect(mockUsDb.prepare).toHaveBeenCalled()
-    expect(mockEuDb.prepare).toHaveBeenCalled()
-    expect(mockApacDb.prepare).toHaveBeenCalled()
+    // Message should be retried due to security rejection
+    expect(batch.messages[0].retry).toHaveBeenCalled()
   })
 
   test("processes messages in sequence (not parallel)", async () => {

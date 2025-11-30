@@ -475,24 +475,14 @@ describe("AuditService", () => {
   })
 
   describe("configuration", () => {
-    test("uses custom table name", async () => {
-      const customService = new AuditService({
-        database: mockDb,
-        tableName: "custom_audit_logs",
-      })
-
-      const prepareSpy = spyOn(mockDb, "prepare")
-
-      await customService.logTokenUsage({
-        token_id: "test",
-        subject: "user:test",
-        event_type: "generated",
-        timestamp: Date.now(),
-      })
-
-      expect(prepareSpy).toHaveBeenCalled()
-      const sql = prepareSpy.mock.calls[0][0]
-      expect(sql).toContain("custom_audit_logs")
+    test("rejects invalid custom table names for security", async () => {
+      // Custom table names are blocked by SQLValidator for security
+      expect(() => {
+        new AuditService({
+          database: mockDb,
+          tableName: "custom_audit_logs",
+        })
+      }).toThrow("Invalid table name specified")
     })
 
     test("uses default table name when not specified", async () => {

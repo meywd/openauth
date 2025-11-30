@@ -336,7 +336,7 @@ describe("applySyncMessage", () => {
     mockDb = createMockD1()
   })
 
-  test("applies CREATE operation with Last-Write-Wins", async () => {
+  test("applies CREATE operation with INSERT OR IGNORE", async () => {
     const message: ClientSyncMessage = {
       operation: "create",
       client_id: "new-client",
@@ -363,8 +363,8 @@ describe("applySyncMessage", () => {
 
     expect(mockDb.prepare).toHaveBeenCalled()
     const sql = mockDb.prepare.mock.calls[0][0]
-    expect(sql).toContain("INSERT OR REPLACE")
-    expect(sql).toContain("WHERE NOT EXISTS")
+    // Uses INSERT OR IGNORE - only inserts if not exists
+    expect(sql).toContain("INSERT OR IGNORE")
   })
 
   test("applies UPDATE operation with timestamp check", async () => {
