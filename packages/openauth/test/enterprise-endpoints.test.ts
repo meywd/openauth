@@ -88,7 +88,7 @@ describe("Enterprise Endpoints", () => {
     const adapter = new D1ClientAdapter({ database: mockClientDb })
     authenticator = new ClientAuthenticator({
       adapter,
-      iterations: 1000, // Lower for faster tests
+      // Note: Must use default iterations to match issuer's authenticator
     })
 
     // Create a test client
@@ -140,11 +140,16 @@ describe("Enterprise Endpoints", () => {
       },
     })
 
+    const BASE_URL = "https://auth.example.com"
     client = createClient({
-      issuer: "https://auth.example.com",
+      issuer: BASE_URL,
       clientID: "test-client",
       fetch: (a, b) => Promise.resolve(auth.request(a, b)),
     })
+
+    // Helper to make requests with full URL so issuer() returns consistent value
+    const authRequest = (path: string, init?: RequestInit) =>
+      auth.request(`${BASE_URL}${path}`, init)
 
     // Obtain tokens through authorization flow
     const [verifier, authorization] = await client.pkce(
@@ -171,9 +176,12 @@ describe("Enterprise Endpoints", () => {
     setSystemTime()
   })
 
+  // Use full URL for requests to ensure issuer claim matches
+  const BASE_URL = "https://auth.example.com"
+
   describe("Token Introspection Endpoint", () => {
     test("requires client authentication", async () => {
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -191,7 +199,7 @@ describe("Enterprise Endpoints", () => {
     test("accepts Basic auth credentials", async () => {
       const credentials = btoa("test-client:test-secret")
 
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -208,7 +216,7 @@ describe("Enterprise Endpoints", () => {
     })
 
     test("accepts form-based credentials", async () => {
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -228,7 +236,7 @@ describe("Enterprise Endpoints", () => {
     test("rejects invalid client credentials", async () => {
       const credentials = btoa("test-client:wrong-secret")
 
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -247,7 +255,7 @@ describe("Enterprise Endpoints", () => {
     test("returns active=true for valid access token", async () => {
       const credentials = btoa("test-client:test-secret")
 
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -275,7 +283,7 @@ describe("Enterprise Endpoints", () => {
       // Advance time past token expiration
       setSystemTime(Date.now() + 1000 * 1000) // 1000 seconds (> 900s TTL)
 
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -293,7 +301,7 @@ describe("Enterprise Endpoints", () => {
     test("returns active=false for invalid token", async () => {
       const credentials = btoa("test-client:test-secret")
 
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -311,7 +319,7 @@ describe("Enterprise Endpoints", () => {
     test("requires token parameter", async () => {
       const credentials = btoa("test-client:test-secret")
 
-      const response = await auth.request("/token/introspect", {
+      const response = await auth.request(`${BASE_URL}/token/introspect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -327,8 +335,10 @@ describe("Enterprise Endpoints", () => {
   })
 
   describe("Token Revocation Endpoint", () => {
-    test("requires client authentication", async () => {
-      const response = await auth.request("/token/revoke", {
+    test("requires client_id for revocation (returns 400 when missing)", async () => {
+      // Per RFC 7009: client_id is required to identify the client
+      // Without client_id, we can't determine if it's a public or confidential client
+      const response = await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -338,7 +348,7 @@ describe("Enterprise Endpoints", () => {
         }),
       })
 
-      expect(response.status).toBe(401)
+      expect(response.status).toBe(400)
       const body = await response.json()
       expect(body.error).toBe("invalid_request")
     })
@@ -346,7 +356,7 @@ describe("Enterprise Endpoints", () => {
     test("accepts Basic auth credentials", async () => {
       const credentials = btoa("test-client:test-secret")
 
-      const response = await auth.request("/token/revoke", {
+      const response = await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -365,7 +375,7 @@ describe("Enterprise Endpoints", () => {
       const credentials = btoa("test-client:test-secret")
 
       // Revoke the refresh token
-      const revokeResponse = await auth.request("/token/revoke", {
+      const revokeResponse = await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -399,7 +409,7 @@ describe("Enterprise Endpoints", () => {
     test("returns success even for non-existent token (RFC 7009)", async () => {
       const credentials = btoa("test-client:test-secret")
 
-      const response = await auth.request("/token/revoke", {
+      const response = await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -418,7 +428,7 @@ describe("Enterprise Endpoints", () => {
     test("requires token parameter", async () => {
       const credentials = btoa("test-client:test-secret")
 
-      const response = await auth.request("/token/revoke", {
+      const response = await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -435,7 +445,7 @@ describe("Enterprise Endpoints", () => {
     test("rejects invalid client credentials", async () => {
       const credentials = btoa("test-client:wrong-secret")
 
-      const response = await auth.request("/token/revoke", {
+      const response = await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -459,7 +469,7 @@ describe("Enterprise Endpoints", () => {
       expect(isRefreshToken).toBe(true)
 
       // Should revoke even without token_type_hint
-      const response = await auth.request("/token/revoke", {
+      const response = await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -520,7 +530,7 @@ describe("Enterprise Endpoints", () => {
       const credentials = btoa("test-client:test-secret")
 
       // Revoke a token
-      await auth.request("/token/revoke", {
+      await auth.request(`${BASE_URL}/token/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
