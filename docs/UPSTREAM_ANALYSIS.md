@@ -116,7 +116,6 @@ This document analyzes the upstream OpenAuth repository to identify existing dis
 **Two Options**:
 
 1. **Option A - Wait and Pull**: Monitor PR #279 and pull it when merged upstream
-
    - Pros: Official implementation, maintained upstream
    - Cons: Unknown merge timeline
 
@@ -369,7 +368,6 @@ issuer({
 #### Phase 1: Core Infrastructure ✅
 
 1. **Storage Decision** (0 hours - architectural decision)
-
    - ❌ DO NOT implement D1 storage adapter (can't handle concurrency)
    - ✅ Keep existing KV storage for all tokens
    - ✅ Use D1 only for audit logging (async, non-blocking)
@@ -383,17 +381,14 @@ issuer({
 #### Phase 2: Custom Enterprise Features 🆕
 
 3. **Token Introspection** (3-4 hours)
-
    - No upstream work → proceed as planned
    - High upstream contribution potential
 
 4. **Token Revocation** (3-4 hours)
-
    - No upstream work → proceed as planned
    - High upstream contribution potential
 
 5. **Audit Logging** (2-3 hours)
-
    - Enterprise-specific feature
    - Proceed as planned
 

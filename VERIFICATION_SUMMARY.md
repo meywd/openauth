@@ -177,7 +177,6 @@ $ grep -n "void input.audit" issuer.ts | wc -l
 ## Known Limitations
 
 1. **Test Execution**
-
    - Tests created but not executed
    - Reason: Bun runtime not available in current environment
    - Resolution: Install Bun or use CI/CD with Bun support

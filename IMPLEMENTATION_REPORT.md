@@ -260,7 +260,6 @@ CREATE INDEX idx_client_id ON token_usage(client_id);
 ### Test Files Created
 
 1. **client-authenticator.test.ts** - 15 tests
-
    - PBKDF2 hashing consistency
    - Salt generation randomness
    - Constant-time comparison
@@ -268,7 +267,6 @@ CREATE INDEX idx_client_id ON token_usage(client_id);
    - Client CRUD operations
 
 2. **revocation-service.test.ts** - 12 tests
-
    - Access token revocation
    - Refresh token revocation
    - Revocation checks
@@ -276,7 +274,6 @@ CREATE INDEX idx_client_id ON token_usage(client_id);
    - Error handling (fail-open)
 
 3. **audit-service.test.ts** - 10 tests
-
    - Event logging for all types
    - Analytics queries
    - Token family tracking
@@ -308,7 +305,6 @@ bun test
 ### Files Created
 
 1. **docs/ENTERPRISE_FEATURES.md** - 21 KB comprehensive guide
-
    - Feature overview
    - Configuration examples
    - API reference
@@ -613,12 +609,10 @@ npx wrangler d1 execute openauth-audit \
 ## Known Limitations
 
 1. **D1 Write Throughput**: Limited to hundreds of writes/second
-
    - **Impact:** Audit logging may be delayed under extreme load
    - **Mitigation:** Fire-and-forget design prevents OAuth flow blocking
 
 2. **Revocation List Growth**: Grows with token volume
-
    - **Impact:** KV storage costs increase
    - **Mitigation:** Automatic TTL-based cleanup
 
@@ -649,7 +643,6 @@ npx wrangler d1 execute openauth-audit \
    ```
 
 4. **Update issuer configuration**
-
    - Add `clientDb` binding
    - Add `audit` configuration
    - Configure CORS if needed
