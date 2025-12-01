@@ -217,7 +217,7 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
             if (item[ttl] && item[ttl].N < now) {
               continue
             }
-            const keyStr = `${item[pk].S}:${item[sk].S}`
+            const keyStr = JSON.stringify([item[pk].S, item[sk].S])
             if (!seenKeys.has(keyStr)) {
               seenKeys.add(keyStr)
               yield [[item[pk].S, item[sk].S], JSON.parse(item.value.S)] as [

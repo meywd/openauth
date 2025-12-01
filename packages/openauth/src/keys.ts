@@ -194,7 +194,10 @@ async function signingKeysInternal(
     return [await deserializeKeyPair(savedKey, signingAlg, "sig")]
   }
 
-  // Fallback: return the key we just generated
+  // Fallback: return the key we just generated (should rarely happen)
+  console.warn(
+    "[openauth:keys] Using locally generated signing key - storage may be unavailable",
+  )
   return [await deserializeKeyPair(serialized, signingAlg, "sig")]
 }
 
@@ -292,6 +295,9 @@ async function encryptionKeysInternal(
     return [await deserializeKeyPair(savedKey, encryptionAlg)]
   }
 
-  // Fallback: return the key we just generated
+  // Fallback: return the key we just generated (should rarely happen)
+  console.warn(
+    "[openauth:keys] Using locally generated encryption key - storage may be unavailable",
+  )
   return [await deserializeKeyPair(serialized, encryptionAlg)]
 }

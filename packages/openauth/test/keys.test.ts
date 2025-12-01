@@ -5,11 +5,9 @@ import {
   beforeEach,
   afterEach,
   setSystemTime,
-  mock,
-  spyOn,
 } from "bun:test"
 import { MemoryStorage } from "../src/storage/memory.js"
-import { encryptionKeys, signingKeys, legacySigningKeys } from "../src/keys.js"
+import { encryptionKeys, signingKeys } from "../src/keys.js"
 import { Storage, joinKey } from "../src/storage/storage.js"
 
 describe("Key Generation and Persistence", () => {
@@ -99,10 +97,8 @@ describe("Key Generation and Persistence", () => {
       const savedKeys = await Array.fromAsync(
         Storage.scan(storage, ["encryption:key"]),
       )
-      console.log("Keys created from concurrent calls:", savedKeys.length)
 
-      // ISSUE: This might create multiple keys due to race condition!
-      // If this fails, we've found the bug
+      // Verify only one key was created (no race condition)
       expect(savedKeys).toHaveLength(1)
     })
   })
@@ -143,10 +139,6 @@ describe("Key Generation and Persistence", () => {
       const savedKeys = await Array.fromAsync(
         Storage.scan(storage, ["signing:key"]),
       )
-      console.log(
-        "Signing keys created from concurrent calls:",
-        savedKeys.length,
-      )
       expect(savedKeys).toHaveLength(1)
     })
   })
@@ -164,9 +156,6 @@ describe("Key Generation and Persistence", () => {
       const sigKeys = await Array.fromAsync(
         Storage.scan(storage, ["signing:key"]),
       )
-
-      console.log("Encryption keys in storage:", encKeys.length)
-      console.log("Signing keys in storage:", sigKeys.length)
 
       expect(encKeys.length).toBeGreaterThan(0)
       expect(sigKeys.length).toBeGreaterThan(0)
@@ -219,14 +208,9 @@ describe("Key Generation and Persistence", () => {
 
       // Generate keys
       const keys1 = await encryptionKeys(asyncStorage)
-      console.log("Generated key ID:", keys1[0].id)
-
-      // Check what's in storage
-      console.log("Storage contents:", [...data.keys()])
 
       // Load again - should get same key
       const keys2 = await encryptionKeys(asyncStorage)
-      console.log("Loaded key ID:", keys2[0].id)
 
       expect(keys1[0].id).toBe(keys2[0].id)
     })
