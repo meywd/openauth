@@ -63,54 +63,43 @@ export function CloudflareStorage(
       ])
     },
 
-    async *scan(prefix: string[]) {
+    async *scan(
+      prefix: string[],
+    ): AsyncGenerator<[string[], any], void, unknown> {
       const seenKeys = new Set<string>()
 
-      // Scan with new separator format
-      let cursor: string | undefined
-      while (true) {
-        const result = await options.namespace.list({
-          prefix: joinKey([...prefix, ""]),
-          cursor,
-        })
+      // Helper to scan with a specific key joiner
+      async function* scanWithPrefix(
+        keyPrefix: string,
+      ): AsyncGenerator<[string[], any], void, unknown> {
+        let cursor: string | undefined
+        while (true) {
+          const result = await options.namespace.list({
+            prefix: keyPrefix,
+            cursor,
+          })
 
-        for (const key of result.keys) {
-          if (!seenKeys.has(key.name)) {
-            seenKeys.add(key.name)
-            const value = await options.namespace.get(key.name, "json")
-            if (value !== null) {
-              yield [splitKey(key.name), value]
+          for (const key of result.keys) {
+            if (!seenKeys.has(key.name)) {
+              seenKeys.add(key.name)
+              const value = await options.namespace.get(key.name, "json")
+              if (value !== null) {
+                yield [splitKey(key.name), value] as [string[], any]
+              }
             }
           }
+          if (result.list_complete) {
+            break
+          }
+          cursor = result.cursor
         }
-        if (result.list_complete) {
-          break
-        }
-        cursor = result.cursor
       }
+
+      // Scan with new separator format
+      yield* scanWithPrefix(joinKey([...prefix, ""]))
 
       // Also scan with legacy separator format for migration
-      cursor = undefined
-      while (true) {
-        const result = await options.namespace.list({
-          prefix: joinKeyLegacy([...prefix, ""]),
-          cursor,
-        })
-
-        for (const key of result.keys) {
-          if (!seenKeys.has(key.name)) {
-            seenKeys.add(key.name)
-            const value = await options.namespace.get(key.name, "json")
-            if (value !== null) {
-              yield [splitKey(key.name), value]
-            }
-          }
-        }
-        if (result.list_complete) {
-          break
-        }
-        cursor = result.cursor
-      }
+      yield* scanWithPrefix(joinKeyLegacy([...prefix, ""]))
     },
   }
 }

@@ -179,16 +179,20 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
       ])
     },
 
-    async *scan(prefix: string[]) {
+    async *scan(
+      prefix: string[],
+    ): AsyncGenerator<[string[], any], void, unknown> {
       const seenKeys = new Set<string>()
       const now = Date.now() / 1000
 
       // Helper to run a scan with a specific join function
-      async function* scanWithJoin(join: typeof joinKey) {
+      async function* scanWithJoin(
+        join: typeof joinKey,
+      ): AsyncGenerator<[string[], any], void, unknown> {
         const prefixPk =
           prefix.length >= 2 ? join(prefix.slice(0, 2)) : prefix[0]
         const prefixSk = prefix.length > 2 ? join(prefix.slice(2)) : ""
-        let lastEvaluatedKey = undefined
+        let lastEvaluatedKey: any = undefined
 
         while (true) {
           const params = {
@@ -216,7 +220,10 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
             const keyStr = `${item[pk].S}:${item[sk].S}`
             if (!seenKeys.has(keyStr)) {
               seenKeys.add(keyStr)
-              yield [[item[pk].S, item[sk].S], JSON.parse(item.value.S)]
+              yield [[item[pk].S, item[sk].S], JSON.parse(item.value.S)] as [
+                string[],
+                any,
+              ]
             }
           }
 
