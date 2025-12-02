@@ -27,10 +27,7 @@ export default function ProfilePage() {
 
       <div className="account-section">
         <h2>Manage Accounts</h2>
-        <AccountSwitcher
-          apiBaseUrl="/api"
-          authorizeUrl="/authorize"
-        />
+        <AccountSwitcher apiBaseUrl="/api" authorizeUrl="/authorize" />
       </div>
     </div>
   )
@@ -216,10 +213,7 @@ export default async function ProfilePage() {
 
       <div className="account-section">
         <h2>Manage Accounts</h2>
-        <AccountSwitcher
-          apiBaseUrl="/api"
-          authorizeUrl="/authorize"
-        />
+        <AccountSwitcher apiBaseUrl="/api" authorizeUrl="/authorize" />
       </div>
     </div>
   )
@@ -244,7 +238,7 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: { path: string[] } },
 ) {
   const path = params.path.join("/")
   const openAuthUrl = process.env.OPENAUTH_URL || "http://localhost:3001"
@@ -268,14 +262,14 @@ export async function GET(
   } catch (error) {
     return NextResponse.json(
       { error: "internal_error", message: "Failed to proxy request" },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: { path: string[] } },
 ) {
   const path = params.path.join("/")
   const openAuthUrl = process.env.OPENAUTH_URL || "http://localhost:3001"
@@ -302,14 +296,14 @@ export async function POST(
   } catch (error) {
     return NextResponse.json(
       { error: "internal_error", message: "Failed to proxy request" },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: { path: string[] } },
 ) {
   const path = params.path.join("/")
   const openAuthUrl = process.env.OPENAUTH_URL || "http://localhost:3001"
@@ -333,7 +327,7 @@ export async function DELETE(
   } catch (error) {
     return NextResponse.json(
       { error: "internal_error", message: "Failed to proxy request" },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
@@ -488,7 +482,11 @@ export default async function ProfilePage() {
   return (
     <div className="profile-page">
       <div className="profile-header">
-        <img src={profile.avatar} alt={profile.name} className="profile-avatar" />
+        <img
+          src={profile.avatar}
+          alt={profile.name}
+          className="profile-avatar"
+        />
         <div className="profile-info">
           <h1>{profile.name}</h1>
           <p>{profile.email}</p>
@@ -499,7 +497,8 @@ export default async function ProfilePage() {
         <section className="profile-section">
           <h2>Account Management</h2>
           <p>
-            Manage all your logged-in accounts and switch between them seamlessly.
+            Manage all your logged-in accounts and switch between them
+            seamlessly.
           </p>
           <AccountSwitcher
             apiBaseUrl="/api"
@@ -550,7 +549,7 @@ describe("AccountSwitcher", () => {
   })
 
   it("fetches and displays accounts", async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         accounts: [
@@ -573,7 +572,7 @@ describe("AccountSwitcher", () => {
   })
 
   it("switches accounts when button is clicked", async () => {
-    (global.fetch as jest.Mock)
+    ;(global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -615,7 +614,7 @@ describe("AccountSwitcher", () => {
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ userId: "user2" }),
-        })
+        }),
       )
     })
   })
@@ -642,6 +641,7 @@ describe("AccountSwitcher", () => {
 ### Accounts not loading
 
 Check that:
+
 - Session middleware is enabled on the server
 - Session routes are mounted at the correct path
 - Cookies are being sent with requests (`credentials: "include"`)
@@ -650,6 +650,7 @@ Check that:
 ### Switch not working
 
 Verify:
+
 - The userId exists in the session
 - The user has permission to switch accounts
 - Session is not expired
@@ -658,6 +659,7 @@ Verify:
 ### Add account redirect fails
 
 Ensure:
+
 - Authorization URL is correct
 - OAuth client is configured properly
 - Redirect URI is whitelisted

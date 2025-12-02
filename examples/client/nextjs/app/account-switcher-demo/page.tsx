@@ -170,8 +170,8 @@ export default function AccountSwitcherDemo() {
       <div className="header">
         <h1 className="title">Multi-Account Session Management</h1>
         <p className="subtitle">
-          OpenAuth Account Switcher Demo - Switch between multiple logged-in accounts
-          seamlessly
+          OpenAuth Account Switcher Demo - Switch between multiple logged-in
+          accounts seamlessly
         </p>
       </div>
 
@@ -204,8 +204,8 @@ export default function AccountSwitcherDemo() {
             <li className="info-item">
               <h3 className="info-item-title">1. List Accounts</h3>
               <p className="info-item-desc">
-                View all accounts logged in to this browser session. The active account
-                is highlighted.
+                View all accounts logged in to this browser session. The active
+                account is highlighted.
               </p>
             </li>
 
@@ -220,14 +220,16 @@ export default function AccountSwitcherDemo() {
             <li className="info-item">
               <h3 className="info-item-title">3. Remove Accounts</h3>
               <p className="info-item-desc">
-                Click "Remove" to sign out a specific account from this browser session.
+                Click "Remove" to sign out a specific account from this browser
+                session.
               </p>
             </li>
 
             <li className="info-item">
               <h3 className="info-item-title">4. Add Accounts</h3>
               <p className="info-item-desc">
-                Click "+ Add Account" to authenticate with another account via OAuth.
+                Click "+ Add Account" to authenticate with another account via
+                OAuth.
               </p>
             </li>
 
@@ -266,9 +268,10 @@ export default function AccountSwitcherDemo() {
           <div className="warning-box">
             <h3 className="warning-title">Note</h3>
             <p className="warning-text">
-              This demo requires the OpenAuth session management APIs to be properly
-              configured on your server. Make sure the session middleware is enabled and
-              the routes are mounted at <code>/api/session</code>.
+              This demo requires the OpenAuth session management APIs to be
+              properly configured on your server. Make sure the session
+              middleware is enabled and the routes are mounted at{" "}
+              <code>/api/session</code>.
             </p>
           </div>
 

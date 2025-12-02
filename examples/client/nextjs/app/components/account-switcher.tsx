@@ -145,7 +145,8 @@ export function AccountSwitcher({
       setState((prev) => ({
         ...prev,
         loading: "idle",
-        error: error instanceof Error ? error.message : "Failed to fetch accounts",
+        error:
+          error instanceof Error ? error.message : "Failed to fetch accounts",
       }))
     }
   }, [apiBaseUrl])
@@ -193,11 +194,12 @@ export function AccountSwitcher({
         setState((prev) => ({
           ...prev,
           loading: "idle",
-          error: error instanceof Error ? error.message : "Failed to switch account",
+          error:
+            error instanceof Error ? error.message : "Failed to switch account",
         }))
       }
     },
-    [apiBaseUrl, fetchAccounts, onAccountSwitch]
+    [apiBaseUrl, fetchAccounts, onAccountSwitch],
   )
 
   /**
@@ -211,7 +213,9 @@ export function AccountSwitcher({
    */
   const signOutAccount = useCallback(
     async (userId: string) => {
-      if (!confirm(`Are you sure you want to sign out this account (${userId})?`)) {
+      if (
+        !confirm(`Are you sure you want to sign out this account (${userId})?`)
+      ) {
         return
       }
 
@@ -226,7 +230,7 @@ export function AccountSwitcher({
             headers: {
               "Content-Type": "application/json",
             },
-          }
+          },
         )
 
         if (!response.ok) {
@@ -241,7 +245,9 @@ export function AccountSwitcher({
           await fetchAccounts()
 
           // If no accounts left or signed out active account, trigger callback
-          const remainingAccounts = state.accounts.filter((a) => a.userId !== userId)
+          const remainingAccounts = state.accounts.filter(
+            (a) => a.userId !== userId,
+          )
           if (remainingAccounts.length === 0) {
             onSignOut?.()
             // Redirect to login or home page
@@ -252,11 +258,14 @@ export function AccountSwitcher({
         setState((prev) => ({
           ...prev,
           loading: "idle",
-          error: error instanceof Error ? error.message : "Failed to sign out account",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to sign out account",
         }))
       }
     },
-    [apiBaseUrl, fetchAccounts, onSignOut, state.accounts]
+    [apiBaseUrl, fetchAccounts, onSignOut, state.accounts],
   )
 
   /**
@@ -307,7 +316,10 @@ export function AccountSwitcher({
       setState((prev) => ({
         ...prev,
         loading: "idle",
-        error: error instanceof Error ? error.message : "Failed to sign out all accounts",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to sign out all accounts",
       }))
     }
   }, [apiBaseUrl, onSignOut])
@@ -595,67 +607,78 @@ export function AccountSwitcher({
         </div>
       )}
 
-      {state.loading !== "loading" && !state.error && state.accounts.length === 0 && (
-        <div className="empty-state">
-          <p className="empty-state-title">No accounts logged in</p>
-          <p className="empty-state-message">
-            Add an account to get started with multi-account switching.
-          </p>
-        </div>
-      )}
+      {state.loading !== "loading" &&
+        !state.error &&
+        state.accounts.length === 0 && (
+          <div className="empty-state">
+            <p className="empty-state-title">No accounts logged in</p>
+            <p className="empty-state-message">
+              Add an account to get started with multi-account switching.
+            </p>
+          </div>
+        )}
 
-      {state.loading !== "loading" && !state.error && state.accounts.length > 0 && (
-        <div className="accounts-list">
-          {state.accounts.map((account) => (
-            <div
-              key={account.userId}
-              className={`account-item ${account.isActive ? "active" : ""}`}
-              onClick={() => !account.isActive && switchAccount(account.userId)}
-            >
-              <div className="account-info">
-                <p className="account-user-id">
-                  {account.userId}
-                  {account.isActive && (
-                    <span className="account-badge" style={{ marginLeft: "8px" }}>
-                      Active
-                    </span>
-                  )}
-                </p>
-                <div className="account-meta">
-                  <span>{formatAuthTime(account.authenticatedAt)}</span>
-                  <span>•</span>
-                  <span>{account.subjectType}</span>
+      {state.loading !== "loading" &&
+        !state.error &&
+        state.accounts.length > 0 && (
+          <div className="accounts-list">
+            {state.accounts.map((account) => (
+              <div
+                key={account.userId}
+                className={`account-item ${account.isActive ? "active" : ""}`}
+                onClick={() =>
+                  !account.isActive && switchAccount(account.userId)
+                }
+              >
+                <div className="account-info">
+                  <p className="account-user-id">
+                    {account.userId}
+                    {account.isActive && (
+                      <span
+                        className="account-badge"
+                        style={{ marginLeft: "8px" }}
+                      >
+                        Active
+                      </span>
+                    )}
+                  </p>
+                  <div className="account-meta">
+                    <span>{formatAuthTime(account.authenticatedAt)}</span>
+                    <span>•</span>
+                    <span>{account.subjectType}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="account-actions">
-                {!account.isActive && (
+                <div className="account-actions">
+                  {!account.isActive && (
+                    <button
+                      className="btn btn-switch"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        switchAccount(account.userId)
+                      }}
+                      disabled={state.loading !== "idle"}
+                    >
+                      {state.loading === "switching"
+                        ? "Switching..."
+                        : "Switch"}
+                    </button>
+                  )}
                   <button
-                    className="btn btn-switch"
+                    className="btn btn-remove"
                     onClick={(e) => {
                       e.stopPropagation()
-                      switchAccount(account.userId)
+                      signOutAccount(account.userId)
                     }}
                     disabled={state.loading !== "idle"}
                   >
-                    {state.loading === "switching" ? "Switching..." : "Switch"}
+                    {state.loading === "removing" ? "Removing..." : "Remove"}
                   </button>
-                )}
-                <button
-                  className="btn btn-remove"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    signOutAccount(account.userId)
-                  }}
-                  disabled={state.loading !== "idle"}
-                >
-                  {state.loading === "removing" ? "Removing..." : "Remove"}
-                </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
       <div className="switcher-footer">
         <button

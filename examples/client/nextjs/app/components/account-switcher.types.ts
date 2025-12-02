@@ -136,7 +136,12 @@ export interface ErrorResponse {
  *
  * Used to track the current operation in progress.
  */
-export type LoadingState = "idle" | "loading" | "switching" | "removing" | "adding"
+export type LoadingState =
+  | "idle"
+  | "loading"
+  | "switching"
+  | "removing"
+  | "adding"
 
 /**
  * Props for the AccountSwitcher component

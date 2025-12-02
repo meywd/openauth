@@ -426,7 +426,9 @@ async function setupDefaultTenant(options: {
 
     if (!updateResponse.ok) {
       const error = await updateResponse.json()
-      throw new Error(`Failed to update default tenant: ${error.error_description}`)
+      throw new Error(
+        `Failed to update default tenant: ${error.error_description}`,
+      )
     }
 
     console.log("Default tenant branding updated successfully")
@@ -450,7 +452,9 @@ async function setupDefaultTenant(options: {
 
   if (!createResponse.ok) {
     const error = await createResponse.json()
-    throw new Error(`Failed to create default tenant: ${error.error_description}`)
+    throw new Error(
+      `Failed to create default tenant: ${error.error_description}`,
+    )
   }
 
   const tenant = (await createResponse.json()) as Tenant

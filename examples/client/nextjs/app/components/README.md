@@ -36,21 +36,23 @@ export default function ProfilePage() {
 
 ## Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `apiBaseUrl` | `string` | `"/api"` | Base URL for session API endpoints |
-| `authorizeUrl` | `string` | `"/authorize"` | OAuth authorization URL for adding accounts |
-| `onAccountSwitch` | `(userId: string) => void` | - | Callback when account is switched |
-| `onSignOut` | `() => void` | - | Callback when user signs out |
+| Prop              | Type                       | Default        | Description                                 |
+| ----------------- | -------------------------- | -------------- | ------------------------------------------- |
+| `apiBaseUrl`      | `string`                   | `"/api"`       | Base URL for session API endpoints          |
+| `authorizeUrl`    | `string`                   | `"/authorize"` | OAuth authorization URL for adding accounts |
+| `onAccountSwitch` | `(userId: string) => void` | -              | Callback when account is switched           |
+| `onSignOut`       | `() => void`               | -              | Callback when user signs out                |
 
 ## API Endpoints
 
 The component uses the following OpenAuth session management endpoints:
 
 ### GET /session/accounts
+
 Lists all accounts in the current browser session.
 
 **Response:**
+
 ```json
 {
   "accounts": [
@@ -66,9 +68,11 @@ Lists all accounts in the current browser session.
 ```
 
 ### POST /session/switch
+
 Switches the active account.
 
 **Request:**
+
 ```json
 {
   "userId": "user456"
@@ -76,6 +80,7 @@ Switches the active account.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -83,9 +88,11 @@ Switches the active account.
 ```
 
 ### DELETE /session/accounts/:userId
+
 Signs out a specific account.
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -93,9 +100,11 @@ Signs out a specific account.
 ```
 
 ### DELETE /session/all
+
 Signs out all accounts.
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -133,6 +142,7 @@ The component provides visual feedback for all operations:
 The component uses scoped CSS-in-JS for styling. The styles are self-contained and won't conflict with your application styles.
 
 Key visual features:
+
 - Active account highlighted in blue
 - Hover effects on interactive elements
 - Responsive design
