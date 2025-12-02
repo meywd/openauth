@@ -122,6 +122,146 @@ import {
   UnauthorizedClientError,
   UnknownStateError,
 } from "../error.js"
+import { setTheme, getTheme, THEME_OPENAUTH } from "../ui/theme.js"
+import type { Theme } from "../ui/theme.js"
+import type { MiddlewareHandler, Next } from "hono"
+
+// ============================================
+// THEME RESOLUTION MIDDLEWARE
+// ============================================
+
+/**
+ * Options for the enterprise theme middleware
+ */
+interface EnterpriseThemeMiddlewareOptions {
+  /**
+   * Tenant service for fetching default tenant
+   */
+  tenantService: TenantService
+
+  /**
+   * Theme from issuer config (priority 2)
+   */
+  configTheme?: Theme
+}
+
+/**
+ * Theme Resolution Middleware
+ *
+ * Resolves theme using priority chain and sets to globalThis for SSR.
+ * Must run AFTER tenant resolution, BEFORE route handlers.
+ *
+ * Priority Chain:
+ * 1. tenant.branding.theme (resolved tenant's theme)
+ * 2. config.theme (from createMultiTenantIssuer config)
+ * 3. Default tenant from DB (tenant with ID "default") - prepared for future implementation
+ * 4. THEME_OPENAUTH (hardcoded fallback)
+ *
+ * @param options - Middleware options
+ * @returns Hono middleware handler
+ */
+function createEnterpriseThemeMiddleware(
+  options: EnterpriseThemeMiddlewareOptions,
+): MiddlewareHandler {
+  // Cache for default tenant to avoid repeated DB lookups
+  // This is prepared for future implementation - currently returns null
+  let defaultTenantCache: { tenant: Tenant | null; timestamp: number } | null =
+    null
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+  return async function enterpriseThemeMiddleware(
+    ctx: Context,
+    next: Next,
+  ): Promise<Response | void> {
+    // Get resolved tenant from context (set by tenant resolver)
+    const tenant = getTenant(ctx)
+
+    let resolvedTheme: Theme | null = null
+
+    // Priority 1: Tenant's theme from branding
+    if (tenant?.branding?.theme) {
+      // Convert tenant branding theme to UI Theme type
+      const tenantTheme = tenant.branding.theme
+      resolvedTheme = convertTenantThemeToUITheme(tenantTheme)
+    }
+
+    // Priority 2: Config theme from createMultiTenantIssuer
+    if (!resolvedTheme && options.configTheme) {
+      resolvedTheme = options.configTheme
+    }
+
+    // Priority 3: Default tenant theme (prepared for future implementation)
+    // This hook is ready for when default tenant DB fetching is implemented
+    if (!resolvedTheme) {
+      // Check cache validity
+      const now = Date.now()
+      if (
+        defaultTenantCache &&
+        now - defaultTenantCache.timestamp < CACHE_TTL
+      ) {
+        // Use cached default tenant if available
+        if (defaultTenantCache.tenant?.branding?.theme) {
+          resolvedTheme = convertTenantThemeToUITheme(
+            defaultTenantCache.tenant.branding.theme,
+          )
+        }
+      } else {
+        // Future: Fetch default tenant from service
+        // For now, this is a placeholder that will be implemented separately
+        // const defaultTenant = await options.tenantService.getTenant("default")
+        // defaultTenantCache = { tenant: defaultTenant, timestamp: now }
+        // if (defaultTenant?.branding?.theme) {
+        //   resolvedTheme = convertTenantThemeToUITheme(defaultTenant.branding.theme)
+        // }
+        defaultTenantCache = { tenant: null, timestamp: now }
+      }
+    }
+
+    // Priority 4: THEME_OPENAUTH fallback
+    if (!resolvedTheme) {
+      resolvedTheme = THEME_OPENAUTH
+    }
+
+    // Set theme to globalThis for SSR components
+    setTheme(resolvedTheme)
+
+    // Store in context for programmatic access
+    ctx.set("resolvedTheme", resolvedTheme)
+
+    await next()
+  }
+}
+
+/**
+ * Convert tenant branding theme to UI Theme type
+ *
+ * The tenant branding theme may have different property names/structure
+ * than the UI Theme type. This function normalizes them.
+ *
+ * @param tenantTheme - Theme from tenant branding
+ * @returns UI Theme object
+ */
+function convertTenantThemeToUITheme(tenantTheme: Record<string, any>): Theme {
+  // If the tenant theme already matches UI Theme structure, use it directly
+  if (tenantTheme.primary !== undefined) {
+    return tenantTheme as Theme
+  }
+
+  // Otherwise, build a compatible theme
+  // The tenant branding theme might use different property names
+  return {
+    primary: tenantTheme.primary || tenantTheme.primaryColor || "#007bff",
+    background: tenantTheme.background || tenantTheme.backgroundColor,
+    title: tenantTheme.title,
+    favicon: tenantTheme.favicon,
+    logo: tenantTheme.logo || tenantTheme.logoLight,
+    font: tenantTheme.font || {
+      family: tenantTheme.fontFamily,
+    },
+    css: tenantTheme.css || tenantTheme.customCss,
+    radius: tenantTheme.radius,
+  }
+}
 
 // ============================================
 // MAIN FACTORY FUNCTION
@@ -227,9 +367,24 @@ export function createMultiTenantIssuer<
   app.use("*", createTenantResolver(tenantResolverConfig))
 
   // ============================================
-  // 3. APPLY THEME MIDDLEWARE
+  // 3. APPLY THEME RESOLUTION MIDDLEWARE
   // ============================================
+  // Theme middleware resolves theme using priority chain:
+  // 1. tenant.branding.theme (resolved tenant's theme)
+  // 2. config.theme (from createMultiTenantIssuer config)
+  // 3. Default tenant from DB (prepared for future implementation)
+  // 4. THEME_OPENAUTH (hardcoded fallback)
 
+  app.use(
+    "*",
+    createEnterpriseThemeMiddleware({
+      tenantService: config.tenantService,
+      configTheme: config.theme,
+    }),
+  )
+
+  // Also apply header-based theme middleware for API consumers
+  // This sets HTTP headers (X-Theme-Vars, etc.) for client-side applications
   app.use("*", createTenantThemeMiddleware())
 
   // ============================================

@@ -26,6 +26,22 @@
 
 import { Layout } from "./base.js"
 import { ICON_GITHUB, ICON_GOOGLE } from "./icon.js"
+import type { Theme } from "./theme.js"
+
+/**
+ * Extracts theme from request header if available
+ * @internal
+ */
+function getThemeFromRequest(req: Request): Theme | undefined {
+  const themeHeader = req.headers.get("X-OpenAuth-Theme")
+  if (!themeHeader) return undefined
+
+  try {
+    return JSON.parse(themeHeader) as Theme
+  } catch {
+    return undefined
+  }
+}
 
 export interface SelectProps {
   /**
@@ -62,10 +78,11 @@ export interface SelectProps {
 export function Select(props?: SelectProps) {
   return async (
     providers: Record<string, string>,
-    _req: Request,
+    req: Request,
   ): Promise<Response> => {
+    const theme = getThemeFromRequest(req)
     const jsx = (
-      <Layout>
+      <Layout theme={theme}>
         <div data-component="form">
           {Object.entries(providers).map(([key, type]) => {
             const match = props?.providers?.[key]

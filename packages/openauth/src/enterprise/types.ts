@@ -111,7 +111,44 @@ export interface EnterpriseIssuerConfig<
   clientDb?: D1Database
 
   /**
-   * Optional theme configuration for UI customization
+   * Optional theme configuration for UI customization.
+   *
+   * This theme serves as the default for all tenants that don't have
+   * their own branding.theme configured.
+   *
+   * Theme priority chain (resolved per request):
+   * 1. tenant.branding.theme (per-tenant customization) - highest priority
+   * 2. config.theme (this property) - default for all tenants
+   * 3. Default tenant theme (tenant with ID "default" from database)
+   * 4. THEME_OPENAUTH (hardcoded fallback) - lowest priority
+   *
+   * The resolved theme is:
+   * - Set to globalThis via setTheme() for SSR components
+   * - Available via ctx.get("resolvedTheme") for programmatic access
+   * - Compatible with existing UI components that use getTheme()
+   *
+   * @example
+   * ```typescript
+   * import { THEME_TERMINAL } from "@openauthjs/openauth/ui/theme"
+   *
+   * createMultiTenantIssuer({
+   *   theme: THEME_TERMINAL,
+   *   // ... other config
+   * })
+   * ```
+   *
+   * @example Custom theme
+   * ```typescript
+   * createMultiTenantIssuer({
+   *   theme: {
+   *     title: "My App",
+   *     primary: "#FF5E00",
+   *     background: { light: "#FFF", dark: "#000" },
+   *     font: { family: "Inter, sans-serif" }
+   *   },
+   *   // ... other config
+   * })
+   * ```
    */
   theme?: Theme
 
@@ -412,6 +449,21 @@ export interface EnterpriseContextVariables {
    * Authorization state
    */
   authorization?: EnterpriseAuthorizationState
+
+  /**
+   * Resolved theme for the current request.
+   *
+   * Available after theme resolution middleware runs.
+   * Set using the following priority chain:
+   * 1. tenant.branding.theme (per-tenant customization)
+   * 2. config.theme (from createMultiTenantIssuer)
+   * 3. Default tenant theme (tenant with ID "default")
+   * 4. THEME_OPENAUTH (hardcoded fallback)
+   *
+   * Can be accessed programmatically via `ctx.get("resolvedTheme")`
+   * or use `getTheme()` from `@openauthjs/openauth/ui/theme` for SSR.
+   */
+  resolvedTheme?: Theme
 }
 
 /**

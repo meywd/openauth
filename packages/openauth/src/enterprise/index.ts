@@ -203,6 +203,14 @@ export {
   generateAddAccountUrl,
 } from "./session-integration.js"
 
+// Default Tenant Cache
+export {
+  getDefaultTenantTheme,
+  invalidateDefaultTenantCache,
+  DEFAULT_TENANT_ID,
+  DEFAULT_CACHE_TTL_MS,
+} from "./default-tenant-cache.js"
+
 // ============================================
 // TYPE EXPORTS
 // ============================================
