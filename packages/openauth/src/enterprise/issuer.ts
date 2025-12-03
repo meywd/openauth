@@ -301,6 +301,8 @@ export function createMultiTenantIssuer<
     theme: config.theme,
     ttl: config.ttl,
     clientDb: config.clientDb,
+    audit: config.audit,
+    error: config.error,
 
     // Allow check delegates to enterprise onAllow with tenant context
     allow: async (input, req) => {

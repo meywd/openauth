@@ -25,6 +25,8 @@ import type { SubjectSchema, SubjectPayload } from "../subject.js"
 import type { Theme } from "../ui/theme.js"
 import type { D1Database } from "@cloudflare/workers-types"
 import type { Context } from "hono"
+import type { AuditService } from "../services/audit.js"
+import type { UnknownStateError } from "../error.js"
 
 // ============================================
 // ENTERPRISE ISSUER CONFIGURATION
@@ -218,6 +220,80 @@ export interface EnterpriseIssuerConfig<
    * @returns Response with provider selection UI
    */
   select?(providers: Record<string, string>, req: Request): Promise<Response>
+
+  /**
+   * Audit configuration for token usage logging.
+   *
+   * Provides async, non-blocking audit logging for compliance and
+   * security monitoring. Tracks token generation, refresh, revocation,
+   * and suspicious activity like token reuse.
+   *
+   * @example
+   * ```typescript
+   * import { AuditService } from "@openauthjs/openauth/services/audit"
+   *
+   * createMultiTenantIssuer({
+   *   audit: {
+   *     service: new AuditService({ database: env.AUTH_DB }),
+   *     hooks: {
+   *       onTokenGenerated: true,
+   *       onTokenRefreshed: true,
+   *       onTokenRevoked: true,
+   *       onTokenReused: true, // Security: detect token theft
+   *     }
+   *   },
+   *   // ... other config
+   * })
+   * ```
+   */
+  audit?: {
+    /**
+     * The audit service instance for logging
+     */
+    service: AuditService
+    /**
+     * Which token events to log
+     */
+    hooks?: {
+      /** Log when new tokens are generated */
+      onTokenGenerated?: boolean
+      /** Log when tokens are refreshed */
+      onTokenRefreshed?: boolean
+      /** Log when tokens are revoked */
+      onTokenRevoked?: boolean
+      /** Log when token reuse is detected (security incident) */
+      onTokenReused?: boolean
+    }
+  }
+
+  /**
+   * Custom error handler for unknown state errors.
+   *
+   * Called when the authorization state cannot be found or validated.
+   * This typically happens when cookies expire or are cleared.
+   *
+   * @param error - The UnknownStateError that occurred
+   * @param req - The original request
+   * @returns Custom error response
+   *
+   * @example
+   * ```typescript
+   * createMultiTenantIssuer({
+   *   error: async (err, req) => {
+   *     // Log the error
+   *     console.error('Auth state error:', err)
+   *
+   *     // Return custom error page
+   *     return new Response('Session expired. Please try again.', {
+   *       status: 400,
+   *       headers: { 'Content-Type': 'text/plain' }
+   *     })
+   *   },
+   *   // ... other config
+   * })
+   * ```
+   */
+  error?(error: UnknownStateError, req: Request): Promise<Response>
 }
 
 /**
