@@ -53,77 +53,77 @@
  * ```
  */
 
-import { Hono } from "hono/tiny";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
-import type { Context, MiddlewareHandler, Next } from "hono";
+import { Hono } from "hono/tiny"
+import { cors } from "hono/cors"
+import { logger } from "hono/logger"
+import type { Context, MiddlewareHandler, Next } from "hono"
 
 import type {
-	SessionService,
-	TenantService,
-	RBACService,
-	Tenant,
-	BrowserSession,
-	AccountSession,
-	RBACClaims,
-	PromptType,
-} from "../contracts/types.js";
-import { DEFAULT_SESSION_CONFIG } from "../contracts/types.js";
-import type { Provider } from "../provider/provider.js";
-import type { SubjectPayload, SubjectSchema } from "../subject.js";
-import type { StorageAdapter } from "../storage/storage.js";
+  SessionService,
+  TenantService,
+  RBACService,
+  Tenant,
+  BrowserSession,
+  AccountSession,
+  RBACClaims,
+  PromptType,
+} from "../contracts/types.js"
+import { DEFAULT_SESSION_CONFIG } from "../contracts/types.js"
+import type { Provider } from "../provider/provider.js"
+import type { SubjectPayload, SubjectSchema } from "../subject.js"
+import type { StorageAdapter } from "../storage/storage.js"
 
 import {
-	createTenantResolver,
-	getTenant,
-	getTenantStorage,
-	type TenantResolverOptions as BaseTenantResolverOptions,
-} from "../tenant/resolver.js";
-import { createTenantThemeMiddleware } from "../tenant/theme.js";
-import { tenantApiRoutes } from "../tenant/api.js";
-import { TenantStorageImpl } from "../tenant/storage.js";
+  createTenantResolver,
+  getTenant,
+  getTenantStorage,
+  type TenantResolverOptions as BaseTenantResolverOptions,
+} from "../tenant/resolver.js"
+import { createTenantThemeMiddleware } from "../tenant/theme.js"
+import { tenantApiRoutes } from "../tenant/api.js"
+import { TenantStorageImpl } from "../tenant/storage.js"
 
 import {
-	createSessionMiddleware,
-	createSessionCookieHeader,
-} from "../session/middleware.js";
-import { sessionRoutes, adminSessionRoutes } from "../session/routes.js";
+  createSessionMiddleware,
+  createSessionCookieHeader,
+} from "../session/middleware.js"
+import { sessionRoutes, adminSessionRoutes } from "../session/routes.js"
 
-import { rbacEndpoints } from "../rbac/endpoints.js";
-import { rbacAdminEndpoints } from "../rbac/admin-endpoints.js";
+import { rbacEndpoints } from "../rbac/endpoints.js"
+import { rbacAdminEndpoints } from "../rbac/admin-endpoints.js"
 
 import type {
-	EnterpriseIssuerConfig,
-	EnterpriseContextVariables,
-	EnterpriseAuthorizationState,
-	EnterpriseAuthResult,
-	EnterpriseSuccessContext,
-	MultiTenantIssuer,
-	AccountPickerAccount,
-} from "./types.js";
+  EnterpriseIssuerConfig,
+  EnterpriseContextVariables,
+  EnterpriseAuthorizationState,
+  EnterpriseAuthResult,
+  EnterpriseSuccessContext,
+  MultiTenantIssuer,
+  AccountPickerAccount,
+} from "./types.js"
 
 import {
-	addAccountToSession,
-	handlePromptParameter,
-	handleMaxAge,
-	handleAccountHint,
-	handleLoginHint,
-	validateSessionForSilentAuth,
-	generateAddAccountUrl,
-} from "./session-integration.js";
+  addAccountToSession,
+  handlePromptParameter,
+  handleMaxAge,
+  handleAccountHint,
+  handleLoginHint,
+  validateSessionForSilentAuth,
+  generateAddAccountUrl,
+} from "./session-integration.js"
 
 import {
-	issuer as createBaseIssuer,
-	type OnSuccessResponder,
-} from "../issuer.js";
-import { getRelativeUrl, isDomainMatch } from "../util.js";
+  issuer as createBaseIssuer,
+  type OnSuccessResponder,
+} from "../issuer.js"
+import { getRelativeUrl, isDomainMatch } from "../util.js"
 import {
-	OauthError,
-	UnauthorizedClientError,
-	UnknownStateError,
-} from "../error.js";
-import { setTheme, THEME_OPENAUTH } from "../ui/theme.js";
-import type { Theme } from "../ui/theme.js";
+  OauthError,
+  UnauthorizedClientError,
+  UnknownStateError,
+} from "../error.js"
+import { setTheme, THEME_OPENAUTH } from "../ui/theme.js"
+import type { Theme } from "../ui/theme.js"
 
 // ============================================
 // THEME RESOLUTION MIDDLEWARE
@@ -133,8 +133,8 @@ import type { Theme } from "../ui/theme.js";
  * Options for the enterprise theme middleware
  */
 interface EnterpriseThemeMiddlewareOptions {
-	tenantService: TenantService;
-	configTheme?: Theme;
+  tenantService: TenantService
+  configTheme?: Theme
 }
 
 /**
@@ -149,81 +149,81 @@ interface EnterpriseThemeMiddlewareOptions {
  * 4. THEME_OPENAUTH (hardcoded fallback)
  */
 function createEnterpriseThemeMiddleware(
-	options: EnterpriseThemeMiddlewareOptions,
+  options: EnterpriseThemeMiddlewareOptions,
 ): MiddlewareHandler {
-	let defaultTenantCache: { tenant: Tenant | null; timestamp: number } | null =
-		null;
-	const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  let defaultTenantCache: { tenant: Tenant | null; timestamp: number } | null =
+    null
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
-	return async function enterpriseThemeMiddleware(
-		ctx: Context,
-		next: Next,
-	): Promise<Response | void> {
-		const tenant = getTenant(ctx);
-		let resolvedTheme: Theme | null = null;
+  return async function enterpriseThemeMiddleware(
+    ctx: Context,
+    next: Next,
+  ): Promise<Response | void> {
+    const tenant = getTenant(ctx)
+    let resolvedTheme: Theme | null = null
 
-		// Priority 1: Tenant's theme from branding
-		if (tenant?.branding?.theme) {
-			resolvedTheme = convertTenantThemeToUITheme(tenant.branding.theme);
-		}
+    // Priority 1: Tenant's theme from branding
+    if (tenant?.branding?.theme) {
+      resolvedTheme = convertTenantThemeToUITheme(tenant.branding.theme)
+    }
 
-		// Priority 2: Config theme from createMultiTenantIssuer
-		if (!resolvedTheme && options.configTheme) {
-			resolvedTheme = options.configTheme;
-		}
+    // Priority 2: Config theme from createMultiTenantIssuer
+    if (!resolvedTheme && options.configTheme) {
+      resolvedTheme = options.configTheme
+    }
 
-		// Priority 3: Default tenant theme (prepared for future)
-		if (!resolvedTheme) {
-			const now = Date.now();
-			if (
-				defaultTenantCache &&
-				now - defaultTenantCache.timestamp < CACHE_TTL
-			) {
-				if (defaultTenantCache.tenant?.branding?.theme) {
-					resolvedTheme = convertTenantThemeToUITheme(
-						defaultTenantCache.tenant.branding.theme,
-					);
-				}
-			} else {
-				defaultTenantCache = { tenant: null, timestamp: now };
-			}
-		}
+    // Priority 3: Default tenant theme (prepared for future)
+    if (!resolvedTheme) {
+      const now = Date.now()
+      if (
+        defaultTenantCache &&
+        now - defaultTenantCache.timestamp < CACHE_TTL
+      ) {
+        if (defaultTenantCache.tenant?.branding?.theme) {
+          resolvedTheme = convertTenantThemeToUITheme(
+            defaultTenantCache.tenant.branding.theme,
+          )
+        }
+      } else {
+        defaultTenantCache = { tenant: null, timestamp: now }
+      }
+    }
 
-		// Priority 4: THEME_OPENAUTH fallback
-		if (!resolvedTheme) {
-			resolvedTheme = THEME_OPENAUTH;
-		}
+    // Priority 4: THEME_OPENAUTH fallback
+    if (!resolvedTheme) {
+      resolvedTheme = THEME_OPENAUTH
+    }
 
-		// Set theme to globalThis for SSR components
-		setTheme(resolvedTheme);
+    // Set theme to globalThis for SSR components
+    setTheme(resolvedTheme)
 
-		// Store in context for programmatic access
-		ctx.set("resolvedTheme", resolvedTheme);
+    // Store in context for programmatic access
+    ctx.set("resolvedTheme", resolvedTheme)
 
-		await next();
-	};
+    await next()
+  }
 }
 
 /**
  * Convert tenant branding theme to UI Theme type
  */
 function convertTenantThemeToUITheme(tenantTheme: Record<string, any>): Theme {
-	if (tenantTheme.primary !== undefined) {
-		return tenantTheme as Theme;
-	}
+  if (tenantTheme.primary !== undefined) {
+    return tenantTheme as Theme
+  }
 
-	return {
-		primary: tenantTheme.primary || tenantTheme.primaryColor || "#007bff",
-		background: tenantTheme.background || tenantTheme.backgroundColor,
-		title: tenantTheme.title,
-		favicon: tenantTheme.favicon,
-		logo: tenantTheme.logo || tenantTheme.logoLight,
-		font: tenantTheme.font || {
-			family: tenantTheme.fontFamily,
-		},
-		css: tenantTheme.css || tenantTheme.customCss,
-		radius: tenantTheme.radius,
-	};
+  return {
+    primary: tenantTheme.primary || tenantTheme.primaryColor || "#007bff",
+    background: tenantTheme.background || tenantTheme.backgroundColor,
+    title: tenantTheme.title,
+    favicon: tenantTheme.favicon,
+    logo: tenantTheme.logo || tenantTheme.logoLight,
+    font: tenantTheme.font || {
+      family: tenantTheme.fontFamily,
+    },
+    css: tenantTheme.css || tenantTheme.customCss,
+    radius: tenantTheme.radius,
+  }
 }
 
 // ============================================
@@ -246,559 +246,555 @@ function convertTenantThemeToUITheme(tenantTheme: Record<string, any>): Theme {
  * @returns The multi-tenant issuer with Hono app and helpers
  */
 export function createMultiTenantIssuer<
-	Providers extends Record<string, Provider<any>>,
-	Subjects extends SubjectSchema,
+  Providers extends Record<string, Provider<any>>,
+  Subjects extends SubjectSchema,
 >(config: EnterpriseIssuerConfig<Providers, Subjects>): MultiTenantIssuer {
-	// Validate required config
-	if (!config.tenantService) {
-		throw new Error("tenantService is required");
-	}
-	if (!config.sessionService) {
-		throw new Error("sessionService is required");
-	}
-	if (!config.storage) {
-		throw new Error("storage is required");
-	}
-	if (!config.sessionSecret || config.sessionSecret.length !== 32) {
-		throw new Error("sessionSecret must be a 256-bit (32 byte) Uint8Array");
-	}
-	if (!config.providers || Object.keys(config.providers).length === 0) {
-		throw new Error("At least one provider is required");
-	}
-	if (!config.subjects) {
-		throw new Error("subjects schema is required");
-	}
-
-	// Session config with defaults
-	const sessionConfig = {
-		...DEFAULT_SESSION_CONFIG,
-		...config.sessionConfig,
-	};
-
-	// ============================================
-	// CONTEXT FOR PASSING DATA TO SUCCESS CALLBACK
-	// ============================================
-	// We use a WeakMap to associate request objects with their enterprise context
-	// This avoids polluting the global scope while enabling the success callback
-	// to access tenant and session information.
-	const requestContextMap = new WeakMap<
-		Request,
-		{
-			tenant: Tenant;
-			browserSession: BrowserSession | null;
-			authorization: EnterpriseAuthorizationState | null;
-		}
-	>();
-
-	// ============================================
-	// CREATE BASE ISSUER WITH WRAPPED SUCCESS
-	// ============================================
-
-	const baseIssuer = createBaseIssuer({
-		subjects: config.subjects,
-		storage: config.storage,
-		providers: config.providers,
-		theme: config.theme,
-		ttl: config.ttl,
-		clientDb: config.clientDb,
-
-		// Allow check delegates to enterprise onAllow with tenant context
-		allow: async (input, req) => {
-			const ctx = requestContextMap.get(req);
-			if (!ctx?.tenant) {
-				// Fallback to default allow check if no tenant context
-				return defaultAllowCheck(input, req);
-			}
-
-			if (config.onAllow) {
-				return config.onAllow(input, req, ctx.tenant);
-			}
-			return defaultAllowCheck(input, req);
-		},
-
-		// Success callback intercepts to add enterprise features
-		success: async (responder, value, req) => {
-			const ctx = requestContextMap.get(req);
-			if (!ctx?.tenant) {
-				// No enterprise context - delegate directly to base
-				throw new Error("Enterprise context not found for request");
-			}
-
-			const tenant = ctx.tenant;
-			const browserSession = ctx.browserSession;
-			const authorization = ctx.authorization;
-
-			// Get or create browser session
-			let session = browserSession;
-			// Note: Session creation is handled by session middleware
-			// New sessions are created during the session middleware if needed
-
-			// Enrich with RBAC claims if service available
-			let rbacClaims: RBACClaims = { roles: [], permissions: [] };
-			if (config.rbacService && (value as any).userID) {
-				rbacClaims = await config.rbacService.enrichTokenClaims({
-					userId: (value as any).userID,
-					appId: authorization?.client_id || "default",
-					tenantId: tenant.id,
-				});
-			}
-
-			// Build enterprise auth result
-			const enterpriseResult: EnterpriseAuthResult = {
-				...(value as Record<string, unknown>),
-				provider: value.provider as string,
-				tenantId: tenant.id,
-				roles: rbacClaims.roles,
-				permissions: rbacClaims.permissions,
-			};
-
-			// Create enhanced success context that wraps the base responder
-			const enterpriseCtx: EnterpriseSuccessContext<SubjectPayload<Subjects>> =
-				{
-					async subject(type, properties, opts) {
-						// Enrich properties with enterprise data
-						const baseProperties =
-							typeof properties === "object" && properties !== null
-								? properties
-								: {};
-						const enrichedProperties = {
-							...baseProperties,
-							tenantId: tenant.id,
-							roles: rbacClaims.roles,
-							permissions: rbacClaims.permissions,
-						};
-
-						// Add account to session after successful auth
-						// This is done via the session service when we have a valid session
-						// The actual session update happens in the session middleware response
-
-						// Delegate to base responder for actual token generation
-						return responder.subject(
-							type as any,
-							enrichedProperties as any,
-							opts,
-						);
-					},
-				};
-
-			// Call user's success callback or default
-			if (config.onSuccess) {
-				return config.onSuccess(enterpriseCtx, enterpriseResult, tenant);
-			}
-
-			// Default: use base subject method with enriched properties
-			const defaultType = (value as any).type || "user";
-			const defaultProperties = (value as any).properties || value;
-
-			return enterpriseCtx.subject(defaultType, {
-				...defaultProperties,
-				tenantId: tenant.id,
-				roles: rbacClaims.roles,
-				permissions: rbacClaims.permissions,
-			});
-		},
-
-		// Provider selection UI (inherits from base)
-		select: config.select,
-	});
-
-	// ============================================
-	// CREATE ENTERPRISE APP (WRAPS BASE ISSUER)
-	// ============================================
-
-	const app = new Hono<{
-		Variables: EnterpriseContextVariables;
-	}>();
-
-	// Add logging
-	app.use(logger());
-
-	// ============================================
-	// 1. APPLY GLOBAL CORS (if configured)
-	// ============================================
-
-	if (config.cors) {
-		app.use(
-			"*",
-			cors({
-				origin: config.cors.origins,
-				credentials: config.cors.credentials ?? true,
-				allowMethods: config.cors.methods ?? [
-					"GET",
-					"POST",
-					"PUT",
-					"DELETE",
-					"OPTIONS",
-				],
-				allowHeaders: config.cors.headers ?? ["Content-Type", "Authorization"],
-				maxAge: config.cors.maxAge,
-			}),
-		);
-	}
-
-	// ============================================
-	// 2. APPLY TENANT RESOLVER MIDDLEWARE
-	// ============================================
-
-	const tenantResolverConfig: BaseTenantResolverOptions = {
-		service: config.tenantService,
-		storage: config.storage,
-		config: config.tenantResolver
-			? {
-					baseDomain: config.tenantResolver.baseDomain,
-					pathPrefix: config.tenantResolver.pathPrefix,
-					headerName: config.tenantResolver.headerName,
-					queryParam: config.tenantResolver.queryParam,
-					customDomains: config.tenantResolver.customDomains,
-				}
-			: undefined,
-		optional: false,
-	};
-
-	app.use("*", createTenantResolver(tenantResolverConfig));
-
-	// ============================================
-	// 3. APPLY THEME RESOLUTION MIDDLEWARE
-	// ============================================
-
-	app.use(
-		"*",
-		createEnterpriseThemeMiddleware({
-			tenantService: config.tenantService,
-			configTheme: config.theme,
-		}),
-	);
-
-	// Also apply header-based theme middleware for API consumers
-	app.use("*", createTenantThemeMiddleware());
-
-	// ============================================
-	// 4. APPLY SESSION MIDDLEWARE
-	// ============================================
-
-	app.use(
-		"*",
-		createSessionMiddleware(config.sessionService, config.sessionSecret, {
-			cookieName: sessionConfig.cookieName,
-			autoRefresh: true,
-		}),
-	);
-
-	// ============================================
-	// 5. CONTEXT BRIDGE MIDDLEWARE
-	// ============================================
-	// Store enterprise context in WeakMap so success callback can access it
-
-	app.use("*", async (ctx, next) => {
-		const tenant = getTenant(ctx);
-		const browserSession = ctx.get("browserSession") as BrowserSession | null;
-		const authorization = ctx.get("authorization") as
-			| EnterpriseAuthorizationState
-			| undefined;
-
-		if (tenant) {
-			requestContextMap.set(ctx.req.raw, {
-				tenant,
-				browserSession,
-				authorization: authorization || null,
-			});
-		}
-
-		await next();
-	});
-
-	// ============================================
-	// 6. MOUNT ENTERPRISE-SPECIFIC ROUTES
-	// ============================================
-
-	// User-facing session routes: /session/*
-	app.route("/session", sessionRoutes(config.sessionService));
-
-	// Admin session routes: /admin/sessions/*
-	app.route("/admin/sessions", adminSessionRoutes(config.sessionService));
-
-	// RBAC routes (if configured)
-	if (config.rbacService) {
-		app.route("/rbac", rbacEndpoints(config.rbacService));
-		app.route("/rbac/admin", rbacAdminEndpoints(config.rbacService));
-	}
-
-	// Tenant CRUD API: /tenants/*
-	app.route("/tenants", tenantApiRoutes(config.tenantService));
-
-	// ============================================
-	// 7. ENHANCED /authorize WITH OIDC PROMPT SUPPORT
-	// ============================================
-	// Override the base /authorize to add OIDC prompt parameter handling
-	// before delegating to the base issuer
-
-	app.get("/authorize", async (c) => {
-		const tenant = getTenant(c);
-		if (!tenant) {
-			return c.json(
-				{ error: "tenant_not_found", error_description: "Tenant not resolved" },
-				404,
-			);
-		}
-
-		// Extract OIDC parameters
-		const prompt = c.req.query("prompt") as PromptType | undefined;
-		const login_hint = c.req.query("login_hint");
-		const account_hint = c.req.query("account_hint");
-		const max_age = c.req.query("max_age");
-
-		// Get session info
-		const browserSession = c.get("browserSession") as BrowserSession | null;
-		const activeAccount = c.get("activeAccount") as AccountSession | null;
-
-		// Build enterprise authorization state for context
-		const authorization: EnterpriseAuthorizationState = {
-			redirect_uri: c.req.query("redirect_uri") || "",
-			response_type: c.req.query("response_type") || "",
-			state: c.req.query("state") || "",
-			client_id: c.req.query("client_id") || "",
-			audience: c.req.query("audience"),
-			pkce:
-				c.req.query("code_challenge") && c.req.query("code_challenge_method")
-					? {
-							challenge: c.req.query("code_challenge")!,
-							method: c.req.query("code_challenge_method") as "S256",
-						}
-					: undefined,
-			prompt,
-			login_hint,
-			account_hint,
-			max_age: max_age ? parseInt(max_age, 10) : undefined,
-			scope: c.req.query("scope"),
-			nonce: c.req.query("nonce"),
-		};
-
-		c.set("authorization", authorization);
-
-		// Update context map with authorization
-		requestContextMap.set(c.req.raw, {
-			tenant,
-			browserSession,
-			authorization,
-		});
-
-		// Handle account_hint if provided
-		if (authorization.account_hint && browserSession) {
-			await handleAccountHint(
-				c,
-				authorization.account_hint,
-				config.sessionService,
-				browserSession,
-			);
-		}
-
-		// Handle login_hint if provided
-		if (authorization.login_hint && browserSession) {
-			await handleLoginHint(
-				c,
-				authorization.login_hint,
-				config.sessionService,
-				browserSession,
-			);
-		}
-
-		// Handle prompt parameter (OIDC specific)
-		const promptResult = await handlePromptParameter(
-			c,
-			authorization.prompt,
-			config.sessionService,
-			browserSession,
-			authorization,
-		);
-
-		if (!promptResult.proceed) {
-			if (promptResult.response) {
-				return promptResult.response;
-			}
-
-			// Check if we should show account picker
-			if (c.get("showAccountPicker")) {
-				const accounts = c.get("accountPickerAccounts") || [];
-				return renderAccountPicker(c, accounts, authorization, tenant);
-			}
-		}
-
-		// Handle max_age parameter
-		if (authorization.max_age !== undefined && activeAccount) {
-			const maxAgeResult = handleMaxAge(
-				c,
-				authorization.max_age,
-				activeAccount,
-			);
-			if (maxAgeResult.forceReauth) {
-				promptResult.forceReauth = true;
-			}
-		}
-
-		// Delegate to base issuer for actual authorization
-		// Create a new request that will be handled by the base issuer
-		const baseResponse = await baseIssuer.request(c.req.raw);
-		return baseResponse;
-	});
-
-	// ============================================
-	// 8. ENHANCED WELL-KNOWN ENDPOINTS
-	// ============================================
-	// Override to include enterprise-specific claims
-
-	app.get(
-		"/.well-known/openid-configuration",
-		cors({
-			origin: "*",
-			allowHeaders: ["*"],
-			allowMethods: ["GET"],
-			credentials: false,
-		}),
-		async (c) => {
-			const tenant = getTenant(c);
-			const iss = getIssuerUrl(tenant!, c.req.raw);
-
-			return c.json({
-				issuer: iss,
-				authorization_endpoint: `${iss}/authorize`,
-				token_endpoint: `${iss}/token`,
-				userinfo_endpoint: `${iss}/userinfo`,
-				jwks_uri: `${iss}/.well-known/jwks.json`,
-				registration_endpoint: `${iss}/register`,
-				scopes_supported: ["openid", "profile", "email", "offline_access"],
-				response_types_supported: ["code", "token", "id_token", "code token"],
-				response_modes_supported: ["query", "fragment"],
-				grant_types_supported: [
-					"authorization_code",
-					"refresh_token",
-					"implicit",
-					"client_credentials",
-				],
-				subject_types_supported: ["public"],
-				id_token_signing_alg_values_supported: ["RS256"],
-				token_endpoint_auth_methods_supported: [
-					"client_secret_basic",
-					"client_secret_post",
-					"none",
-				],
-				claims_supported: [
-					"sub",
-					"iss",
-					"aud",
-					"exp",
-					"iat",
-					"nonce",
-					"email",
-					"email_verified",
-					"name",
-					"picture",
-					"roles",
-					"permissions",
-					"tenant_id",
-				],
-				code_challenge_methods_supported: ["S256"],
-				// Enterprise extensions
-				prompt_values_supported: ["none", "login", "consent", "select_account"],
-				claim_types_supported: ["normal"],
-				service_documentation: `${iss}/docs`,
-			});
-		},
-	);
-
-	// ============================================
-	// 9. MOUNT BASE ISSUER FOR ALL OTHER ROUTES
-	// ============================================
-	// The base issuer handles:
-	// - /token (authorization_code, refresh_token, client_credentials)
-	// - /.well-known/jwks.json
-	// - /.well-known/oauth-authorization-server
-	// - /userinfo
-	// - /token/introspect
-	// - /token/revoke
-	// - /{provider}/* routes
-
-	app.route("/", baseIssuer);
-
-	// ============================================
-	// 10. ERROR HANDLER
-	// ============================================
-
-	app.onError(async (err, c) => {
-		console.error("Enterprise issuer error:", err);
-
-		if (err instanceof UnknownStateError) {
-			return c.json(
-				{
-					error: "invalid_state",
-					error_description: err.message,
-				},
-				400,
-			);
-		}
-
-		if (err instanceof OauthError) {
-			const authorization = c.get("authorization") as
-				| EnterpriseAuthorizationState
-				| undefined;
-			if (authorization?.redirect_uri) {
-				const url = new URL(authorization.redirect_uri);
-				url.searchParams.set("error", err.error);
-				url.searchParams.set("error_description", err.description);
-				if (authorization.state) {
-					url.searchParams.set("state", authorization.state);
-				}
-				return c.redirect(url.toString());
-			}
-
-			return c.json(
-				{
-					error: err.error,
-					error_description: err.description,
-				},
-				400,
-			);
-		}
-
-		return c.json(
-			{
-				error: "server_error",
-				error_description: err.message || "Internal server error",
-			},
-			500,
-		);
-	});
-
-	// ============================================
-	// HELPER FUNCTIONS
-	// ============================================
-
-	function getIssuerUrl(tenant: Tenant, req: Request): string {
-		const url = new URL(req.url);
-
-		if (tenant.domain) {
-			return `${url.protocol}//${tenant.domain}`;
-		}
-
-		return url.origin;
-	}
-
-	async function syncSession(
-		ctx: Context,
-		browserSession: BrowserSession,
-	): Promise<void> {
-		const cookieHeader = await createSessionCookieHeader(
-			browserSession,
-			config.sessionSecret,
-			sessionConfig.cookieName,
-		);
-		ctx.header("Set-Cookie", cookieHeader);
-	}
-
-	return {
-		app,
-		getIssuerUrl,
-		syncSession,
-	};
+  // Validate required config
+  if (!config.tenantService) {
+    throw new Error("tenantService is required")
+  }
+  if (!config.sessionService) {
+    throw new Error("sessionService is required")
+  }
+  if (!config.storage) {
+    throw new Error("storage is required")
+  }
+  if (!config.sessionSecret || config.sessionSecret.length !== 32) {
+    throw new Error("sessionSecret must be a 256-bit (32 byte) Uint8Array")
+  }
+  if (!config.providers || Object.keys(config.providers).length === 0) {
+    throw new Error("At least one provider is required")
+  }
+  if (!config.subjects) {
+    throw new Error("subjects schema is required")
+  }
+
+  // Session config with defaults
+  const sessionConfig = {
+    ...DEFAULT_SESSION_CONFIG,
+    ...config.sessionConfig,
+  }
+
+  // ============================================
+  // CONTEXT FOR PASSING DATA TO SUCCESS CALLBACK
+  // ============================================
+  // We use a WeakMap to associate request objects with their enterprise context
+  // This avoids polluting the global scope while enabling the success callback
+  // to access tenant and session information.
+  const requestContextMap = new WeakMap<
+    Request,
+    {
+      tenant: Tenant
+      browserSession: BrowserSession | null
+      authorization: EnterpriseAuthorizationState | null
+    }
+  >()
+
+  // ============================================
+  // CREATE BASE ISSUER WITH WRAPPED SUCCESS
+  // ============================================
+
+  const baseIssuer = createBaseIssuer({
+    subjects: config.subjects,
+    storage: config.storage,
+    providers: config.providers,
+    theme: config.theme,
+    ttl: config.ttl,
+    clientDb: config.clientDb,
+
+    // Allow check delegates to enterprise onAllow with tenant context
+    allow: async (input, req) => {
+      const ctx = requestContextMap.get(req)
+      if (!ctx?.tenant) {
+        // Fallback to default allow check if no tenant context
+        return defaultAllowCheck(input, req)
+      }
+
+      if (config.onAllow) {
+        return config.onAllow(input, req, ctx.tenant)
+      }
+      return defaultAllowCheck(input, req)
+    },
+
+    // Success callback intercepts to add enterprise features
+    success: async (responder, value, req) => {
+      const ctx = requestContextMap.get(req)
+      if (!ctx?.tenant) {
+        // No enterprise context - delegate directly to base
+        throw new Error("Enterprise context not found for request")
+      }
+
+      const tenant = ctx.tenant
+      const browserSession = ctx.browserSession
+      const authorization = ctx.authorization
+
+      // Get or create browser session
+      let session = browserSession
+      // Note: Session creation is handled by session middleware
+      // New sessions are created during the session middleware if needed
+
+      // Enrich with RBAC claims if service available
+      let rbacClaims: RBACClaims = { roles: [], permissions: [] }
+      if (config.rbacService && (value as any).userID) {
+        rbacClaims = await config.rbacService.enrichTokenClaims({
+          userId: (value as any).userID,
+          appId: authorization?.client_id || "default",
+          tenantId: tenant.id,
+        })
+      }
+
+      // Build enterprise auth result
+      const enterpriseResult: EnterpriseAuthResult = {
+        ...(value as Record<string, unknown>),
+        provider: value.provider as string,
+        tenantId: tenant.id,
+        roles: rbacClaims.roles,
+        permissions: rbacClaims.permissions,
+      }
+
+      // Create enhanced success context that wraps the base responder
+      const enterpriseCtx: EnterpriseSuccessContext<SubjectPayload<Subjects>> =
+        {
+          async subject(type, properties, opts) {
+            // Enrich properties with enterprise data
+            const baseProperties =
+              typeof properties === "object" && properties !== null
+                ? properties
+                : {}
+            const enrichedProperties = {
+              ...baseProperties,
+              tenantId: tenant.id,
+              roles: rbacClaims.roles,
+              permissions: rbacClaims.permissions,
+            }
+
+            // Add account to session after successful auth
+            // This is done via the session service when we have a valid session
+            // The actual session update happens in the session middleware response
+
+            // Delegate to base responder for actual token generation
+            return responder.subject(
+              type as any,
+              enrichedProperties as any,
+              opts,
+            )
+          },
+        }
+
+      // Call user's success callback or default
+      if (config.onSuccess) {
+        return config.onSuccess(enterpriseCtx, enterpriseResult, tenant)
+      }
+
+      // Default: use base subject method with enriched properties
+      const defaultType = (value as any).type || "user"
+      const defaultProperties = (value as any).properties || value
+
+      return enterpriseCtx.subject(defaultType, {
+        ...defaultProperties,
+        tenantId: tenant.id,
+        roles: rbacClaims.roles,
+        permissions: rbacClaims.permissions,
+      })
+    },
+
+    // Provider selection UI (inherits from base)
+    select: config.select,
+  })
+
+  // ============================================
+  // CREATE ENTERPRISE APP (WRAPS BASE ISSUER)
+  // ============================================
+
+  const app = new Hono<{
+    Variables: EnterpriseContextVariables
+  }>()
+
+  // Add logging
+  app.use(logger())
+
+  // ============================================
+  // 1. APPLY GLOBAL CORS (if configured)
+  // ============================================
+
+  if (config.cors) {
+    app.use(
+      "*",
+      cors({
+        origin: config.cors.origins,
+        credentials: config.cors.credentials ?? true,
+        allowMethods: config.cors.methods ?? [
+          "GET",
+          "POST",
+          "PUT",
+          "DELETE",
+          "OPTIONS",
+        ],
+        allowHeaders: config.cors.headers ?? ["Content-Type", "Authorization"],
+        maxAge: config.cors.maxAge,
+      }),
+    )
+  }
+
+  // ============================================
+  // 2. APPLY TENANT RESOLVER MIDDLEWARE
+  // ============================================
+
+  const tenantResolverConfig: BaseTenantResolverOptions = {
+    service: config.tenantService,
+    storage: config.storage,
+    config: config.tenantResolver
+      ? {
+          baseDomain: config.tenantResolver.baseDomain,
+          pathPrefix: config.tenantResolver.pathPrefix,
+          headerName: config.tenantResolver.headerName,
+          queryParam: config.tenantResolver.queryParam,
+          customDomains: config.tenantResolver.customDomains,
+        }
+      : undefined,
+    optional: false,
+  }
+
+  app.use("*", createTenantResolver(tenantResolverConfig))
+
+  // ============================================
+  // 3. APPLY THEME RESOLUTION MIDDLEWARE
+  // ============================================
+
+  app.use(
+    "*",
+    createEnterpriseThemeMiddleware({
+      tenantService: config.tenantService,
+      configTheme: config.theme,
+    }),
+  )
+
+  // Also apply header-based theme middleware for API consumers
+  app.use("*", createTenantThemeMiddleware())
+
+  // ============================================
+  // 4. APPLY SESSION MIDDLEWARE
+  // ============================================
+
+  app.use(
+    "*",
+    createSessionMiddleware(config.sessionService, config.sessionSecret, {
+      cookieName: sessionConfig.cookieName,
+      autoRefresh: true,
+    }),
+  )
+
+  // ============================================
+  // 5. CONTEXT BRIDGE MIDDLEWARE
+  // ============================================
+  // Store enterprise context in WeakMap so success callback can access it
+
+  app.use("*", async (ctx, next) => {
+    const tenant = getTenant(ctx)
+    const browserSession = ctx.get("browserSession") as BrowserSession | null
+    const authorization = ctx.get("authorization") as
+      | EnterpriseAuthorizationState
+      | undefined
+
+    if (tenant) {
+      requestContextMap.set(ctx.req.raw, {
+        tenant,
+        browserSession,
+        authorization: authorization || null,
+      })
+    }
+
+    await next()
+  })
+
+  // ============================================
+  // 6. MOUNT ENTERPRISE-SPECIFIC ROUTES
+  // ============================================
+
+  // User-facing session routes: /session/*
+  app.route("/session", sessionRoutes(config.sessionService))
+
+  // Admin session routes: /admin/sessions/*
+  app.route("/admin/sessions", adminSessionRoutes(config.sessionService))
+
+  // RBAC routes (if configured)
+  if (config.rbacService) {
+    app.route("/rbac", rbacEndpoints(config.rbacService))
+    app.route("/rbac/admin", rbacAdminEndpoints(config.rbacService))
+  }
+
+  // Tenant CRUD API: /tenants/*
+  app.route("/tenants", tenantApiRoutes(config.tenantService))
+
+  // ============================================
+  // 7. ENHANCED /authorize WITH OIDC PROMPT SUPPORT
+  // ============================================
+  // Override the base /authorize to add OIDC prompt parameter handling
+  // before delegating to the base issuer
+
+  app.get("/authorize", async (c) => {
+    const tenant = getTenant(c)
+    if (!tenant) {
+      return c.json(
+        { error: "tenant_not_found", error_description: "Tenant not resolved" },
+        404,
+      )
+    }
+
+    // Extract OIDC parameters
+    const prompt = c.req.query("prompt") as PromptType | undefined
+    const login_hint = c.req.query("login_hint")
+    const account_hint = c.req.query("account_hint")
+    const max_age = c.req.query("max_age")
+
+    // Get session info
+    const browserSession = c.get("browserSession") as BrowserSession | null
+    const activeAccount = c.get("activeAccount") as AccountSession | null
+
+    // Build enterprise authorization state for context
+    const authorization: EnterpriseAuthorizationState = {
+      redirect_uri: c.req.query("redirect_uri") || "",
+      response_type: c.req.query("response_type") || "",
+      state: c.req.query("state") || "",
+      client_id: c.req.query("client_id") || "",
+      audience: c.req.query("audience"),
+      pkce:
+        c.req.query("code_challenge") && c.req.query("code_challenge_method")
+          ? {
+              challenge: c.req.query("code_challenge")!,
+              method: c.req.query("code_challenge_method") as "S256",
+            }
+          : undefined,
+      prompt,
+      login_hint,
+      account_hint,
+      max_age: max_age ? parseInt(max_age, 10) : undefined,
+      scope: c.req.query("scope"),
+      nonce: c.req.query("nonce"),
+    }
+
+    c.set("authorization", authorization)
+
+    // Update context map with authorization
+    requestContextMap.set(c.req.raw, {
+      tenant,
+      browserSession,
+      authorization,
+    })
+
+    // Handle account_hint if provided
+    if (authorization.account_hint && browserSession) {
+      await handleAccountHint(
+        c,
+        authorization.account_hint,
+        config.sessionService,
+        browserSession,
+      )
+    }
+
+    // Handle login_hint if provided
+    if (authorization.login_hint && browserSession) {
+      await handleLoginHint(
+        c,
+        authorization.login_hint,
+        config.sessionService,
+        browserSession,
+      )
+    }
+
+    // Handle prompt parameter (OIDC specific)
+    const promptResult = await handlePromptParameter(
+      c,
+      authorization.prompt,
+      config.sessionService,
+      browserSession,
+      authorization,
+    )
+
+    if (!promptResult.proceed) {
+      if (promptResult.response) {
+        return promptResult.response
+      }
+
+      // Check if we should show account picker
+      if (c.get("showAccountPicker")) {
+        const accounts = c.get("accountPickerAccounts") || []
+        return renderAccountPicker(c, accounts, authorization, tenant)
+      }
+    }
+
+    // Handle max_age parameter
+    if (authorization.max_age !== undefined && activeAccount) {
+      const maxAgeResult = handleMaxAge(c, authorization.max_age, activeAccount)
+      if (maxAgeResult.forceReauth) {
+        promptResult.forceReauth = true
+      }
+    }
+
+    // Delegate to base issuer for actual authorization
+    // Create a new request that will be handled by the base issuer
+    const baseResponse = await baseIssuer.request(c.req.raw)
+    return baseResponse
+  })
+
+  // ============================================
+  // 8. ENHANCED WELL-KNOWN ENDPOINTS
+  // ============================================
+  // Override to include enterprise-specific claims
+
+  app.get(
+    "/.well-known/openid-configuration",
+    cors({
+      origin: "*",
+      allowHeaders: ["*"],
+      allowMethods: ["GET"],
+      credentials: false,
+    }),
+    async (c) => {
+      const tenant = getTenant(c)
+      const iss = getIssuerUrl(tenant!, c.req.raw)
+
+      return c.json({
+        issuer: iss,
+        authorization_endpoint: `${iss}/authorize`,
+        token_endpoint: `${iss}/token`,
+        userinfo_endpoint: `${iss}/userinfo`,
+        jwks_uri: `${iss}/.well-known/jwks.json`,
+        registration_endpoint: `${iss}/register`,
+        scopes_supported: ["openid", "profile", "email", "offline_access"],
+        response_types_supported: ["code", "token", "id_token", "code token"],
+        response_modes_supported: ["query", "fragment"],
+        grant_types_supported: [
+          "authorization_code",
+          "refresh_token",
+          "implicit",
+          "client_credentials",
+        ],
+        subject_types_supported: ["public"],
+        id_token_signing_alg_values_supported: ["RS256"],
+        token_endpoint_auth_methods_supported: [
+          "client_secret_basic",
+          "client_secret_post",
+          "none",
+        ],
+        claims_supported: [
+          "sub",
+          "iss",
+          "aud",
+          "exp",
+          "iat",
+          "nonce",
+          "email",
+          "email_verified",
+          "name",
+          "picture",
+          "roles",
+          "permissions",
+          "tenant_id",
+        ],
+        code_challenge_methods_supported: ["S256"],
+        // Enterprise extensions
+        prompt_values_supported: ["none", "login", "consent", "select_account"],
+        claim_types_supported: ["normal"],
+        service_documentation: `${iss}/docs`,
+      })
+    },
+  )
+
+  // ============================================
+  // 9. MOUNT BASE ISSUER FOR ALL OTHER ROUTES
+  // ============================================
+  // The base issuer handles:
+  // - /token (authorization_code, refresh_token, client_credentials)
+  // - /.well-known/jwks.json
+  // - /.well-known/oauth-authorization-server
+  // - /userinfo
+  // - /token/introspect
+  // - /token/revoke
+  // - /{provider}/* routes
+
+  app.route("/", baseIssuer)
+
+  // ============================================
+  // 10. ERROR HANDLER
+  // ============================================
+
+  app.onError(async (err, c) => {
+    console.error("Enterprise issuer error:", err)
+
+    if (err instanceof UnknownStateError) {
+      return c.json(
+        {
+          error: "invalid_state",
+          error_description: err.message,
+        },
+        400,
+      )
+    }
+
+    if (err instanceof OauthError) {
+      const authorization = c.get("authorization") as
+        | EnterpriseAuthorizationState
+        | undefined
+      if (authorization?.redirect_uri) {
+        const url = new URL(authorization.redirect_uri)
+        url.searchParams.set("error", err.error)
+        url.searchParams.set("error_description", err.description)
+        if (authorization.state) {
+          url.searchParams.set("state", authorization.state)
+        }
+        return c.redirect(url.toString())
+      }
+
+      return c.json(
+        {
+          error: err.error,
+          error_description: err.description,
+        },
+        400,
+      )
+    }
+
+    return c.json(
+      {
+        error: "server_error",
+        error_description: err.message || "Internal server error",
+      },
+      500,
+    )
+  })
+
+  // ============================================
+  // HELPER FUNCTIONS
+  // ============================================
+
+  function getIssuerUrl(tenant: Tenant, req: Request): string {
+    const url = new URL(req.url)
+
+    if (tenant.domain) {
+      return `${url.protocol}//${tenant.domain}`
+    }
+
+    return url.origin
+  }
+
+  async function syncSession(
+    ctx: Context,
+    browserSession: BrowserSession,
+  ): Promise<void> {
+    const cookieHeader = await createSessionCookieHeader(
+      browserSession,
+      config.sessionSecret,
+      sessionConfig.cookieName,
+    )
+    ctx.header("Set-Cookie", cookieHeader)
+  }
+
+  return {
+    app,
+    getIssuerUrl,
+    syncSession,
+  }
 }
 
 // ============================================
@@ -809,34 +805,34 @@ export function createMultiTenantIssuer<
  * Default client allow check
  */
 async function defaultAllowCheck(
-	input: { clientID: string; redirectURI: string; audience?: string },
-	req: Request,
+  input: { clientID: string; redirectURI: string; audience?: string },
+  req: Request,
 ): Promise<boolean> {
-	const redir = new URL(input.redirectURI).hostname;
-	if (redir === "localhost" || redir === "127.0.0.1") {
-		return true;
-	}
-	const forwarded = req.headers.get("x-forwarded-host");
-	const host = forwarded
-		? new URL(`https://${forwarded}`).hostname
-		: new URL(req.url).hostname;
+  const redir = new URL(input.redirectURI).hostname
+  if (redir === "localhost" || redir === "127.0.0.1") {
+    return true
+  }
+  const forwarded = req.headers.get("x-forwarded-host")
+  const host = forwarded
+    ? new URL(`https://${forwarded}`).hostname
+    : new URL(req.url).hostname
 
-	return isDomainMatch(redir, host);
+  return isDomainMatch(redir, host)
 }
 
 /**
  * Render account picker UI
  */
 function renderAccountPicker(
-	ctx: Context,
-	accounts: AccountPickerAccount[],
-	authorization: EnterpriseAuthorizationState,
-	tenant: Tenant,
+  ctx: Context,
+  accounts: AccountPickerAccount[],
+  authorization: EnterpriseAuthorizationState,
+  tenant: Tenant,
 ): Response {
-	const theme = tenant?.branding?.theme || {};
-	const baseUrl = new URL(ctx.req.url).origin;
+  const theme = tenant?.branding?.theme || {}
+  const baseUrl = new URL(ctx.req.url).origin
 
-	const html = `
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -945,17 +941,17 @@ function renderAccountPicker(
     <h1>Choose Account</h1>
     <p class="subtitle">Select an account to continue</p>
     ${accounts
-			.map(
-				(account) => `
+      .map(
+        (account) => `
       <a href="/authorize?client_id=${encodeURIComponent(authorization.client_id)}&redirect_uri=${encodeURIComponent(authorization.redirect_uri)}&response_type=${encodeURIComponent(authorization.response_type)}&state=${encodeURIComponent(authorization.state || "")}&account_hint=${encodeURIComponent(account.userId)}" class="account-btn ${account.isActive ? "active" : ""}">
         <div class="avatar">
           ${
-						account.avatarUrl
-							? `<img src="${account.avatarUrl}" alt="">`
-							: (account.displayName || account.email || "?")
-									.charAt(0)
-									.toUpperCase()
-					}
+            account.avatarUrl
+              ? `<img src="${account.avatarUrl}" alt="">`
+              : (account.displayName || account.email || "?")
+                  .charAt(0)
+                  .toUpperCase()
+          }
         </div>
         <div class="account-info">
           <div class="account-name">${account.displayName || account.email || account.userId}</div>
@@ -963,15 +959,15 @@ function renderAccountPicker(
         </div>
       </a>
     `,
-			)
-			.join("")}
+      )
+      .join("")}
     <a href="${generateAddAccountUrl(baseUrl + "/authorize", authorization)}" class="add-account">
       + Use another account
     </a>
   </div>
 </body>
 </html>
-`;
+`
 
-	return ctx.html(html);
+  return ctx.html(html)
 }

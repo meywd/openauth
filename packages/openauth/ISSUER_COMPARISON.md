@@ -16,84 +16,85 @@ The enterprise issuer (`/src/enterprise/issuer.ts`) is **significantly incomplet
 
 ## Feature Comparison Matrix
 
-| Feature | Regular Issuer | Enterprise Issuer | Status | Priority |
-|---------|----------------|-------------------|--------|----------|
-| **Core OAuth Endpoints** |
-| `/authorize` endpoint | ✅ Full implementation | ⚠️ Partial - missing provider flow | 🔴 Critical |
-| `/token` endpoint | ✅ Complete with all grant types | ❌ **Missing entirely** | 🔴 Critical |
-| `/userinfo` endpoint | ✅ Implemented | ❌ Missing | 🔴 Critical |
-| **Token Operations** |
-| Access token generation | ✅ Full JWT signing | ❌ Missing | 🔴 Critical |
-| Refresh token generation | ✅ With rotation | ❌ Missing | 🔴 Critical |
-| Token storage | ✅ Complete | ❌ Missing | 🔴 Critical |
-| Token encryption | ✅ RSA-OAEP-512 | ❌ Missing | 🔴 Critical |
-| **Grant Types** |
-| authorization_code | ✅ Implemented | ❌ Missing | 🔴 Critical |
-| refresh_token | ✅ With reuse detection | ❌ Missing | 🔴 Critical |
-| client_credentials | ✅ Implemented | ❌ Missing | 🔴 Critical |
-| **Authorization Flow** |
-| Authorization state storage | ✅ Encrypted cookies | ⚠️ Placeholder only | 🔴 Critical |
-| PKCE validation | ✅ S256 method | ❌ Missing | 🔴 Critical |
-| Code exchange | ✅ Secure exchange | ❌ Missing | 🔴 Critical |
-| State parameter handling | ✅ Full support | ⚠️ Partial | 🟡 High |
+| Feature                               | Regular Issuer                   | Enterprise Issuer                  | Status      | Priority |
+| ------------------------------------- | -------------------------------- | ---------------------------------- | ----------- | -------- |
+| **Core OAuth Endpoints**              |
+| `/authorize` endpoint                 | ✅ Full implementation           | ⚠️ Partial - missing provider flow | 🔴 Critical |
+| `/token` endpoint                     | ✅ Complete with all grant types | ❌ **Missing entirely**            | 🔴 Critical |
+| `/userinfo` endpoint                  | ✅ Implemented                   | ❌ Missing                         | 🔴 Critical |
+| **Token Operations**                  |
+| Access token generation               | ✅ Full JWT signing              | ❌ Missing                         | 🔴 Critical |
+| Refresh token generation              | ✅ With rotation                 | ❌ Missing                         | 🔴 Critical |
+| Token storage                         | ✅ Complete                      | ❌ Missing                         | 🔴 Critical |
+| Token encryption                      | ✅ RSA-OAEP-512                  | ❌ Missing                         | 🔴 Critical |
+| **Grant Types**                       |
+| authorization_code                    | ✅ Implemented                   | ❌ Missing                         | 🔴 Critical |
+| refresh_token                         | ✅ With reuse detection          | ❌ Missing                         | 🔴 Critical |
+| client_credentials                    | ✅ Implemented                   | ❌ Missing                         | 🔴 Critical |
+| **Authorization Flow**                |
+| Authorization state storage           | ✅ Encrypted cookies             | ⚠️ Placeholder only                | 🔴 Critical |
+| PKCE validation                       | ✅ S256 method                   | ❌ Missing                         | 🔴 Critical |
+| Code exchange                         | ✅ Secure exchange               | ❌ Missing                         | 🔴 Critical |
+| State parameter handling              | ✅ Full support                  | ⚠️ Partial                         | 🟡 High     |
 | **Success Callback & Token Issuance** |
-| `ctx.subject()` implementation | ✅ Returns tokens | 🐛 Returns JSON, not tokens | 🔴 Critical |
-| Response type 'code' | ✅ Generates auth code | ❌ Missing | 🔴 Critical |
-| Response type 'token' | ✅ Implicit flow | ❌ Missing | 🔴 Critical |
-| Redirect with tokens | ✅ Proper OAuth redirects | ❌ Missing | 🔴 Critical |
-| **Cryptographic Operations** |
-| Signing keys (JWT) | ✅ RS256 with rotation | ❌ Missing | 🔴 Critical |
-| Encryption keys | ✅ RSA-OAEP-512 | ❌ Missing | 🔴 Critical |
-| Cookie encryption | ✅ Full encryption | 🐛 No encryption (plain JSON) | 🔴 Critical |
-| JWKS endpoint | ✅ Returns public keys | 🐛 Returns empty array | 🔴 Critical |
-| **Cookie/State Management** |
-| `auth.set()` - encryption | ✅ Encrypted JWE | 🐛 Plain JSON.stringify | 🔴 Critical |
-| `auth.get()` - decryption | ✅ Decrypts JWE | 🐛 Plain JSON.parse | 🔴 Critical |
-| `auth.unset()` | ✅ Proper deletion | ✅ Works | ✅ OK |
-| Authorization cookie TTL | ✅ 24 hours | ⚠️ Not set | 🟡 High |
-| Secure/SameSite flags | ✅ Correct settings | ✅ Correct | ✅ OK |
-| **Storage Operations** |
-| OAuth code storage | ✅ Implemented | ❌ Missing | 🔴 Critical |
-| Refresh token storage | ✅ With next token | ❌ Missing | 🔴 Critical |
-| Token invalidation | ✅ Scan & delete | ⚠️ Placeholder only | 🟡 High |
-| **Token Security** |
-| Refresh token reuse detection | ✅ Time window + retention | ❌ Missing | 🟡 High |
-| Token revocation (RFC 7009) | ✅ Full support | ❌ Missing | 🟡 High |
-| Token introspection (RFC 7662) | ✅ Full support | ❌ Missing | 🟡 High |
-| Rate limiting | ✅ Sliding window | ❌ Missing | 🟢 Medium |
-| JTI (token ID) in access tokens | ✅ Generated | ❌ Missing | 🟡 High |
-| **Client Authentication** |
-| Client credentials flow | ✅ Implemented | ❌ Missing | 🟡 High |
-| Client authenticator integration | ✅ D1ClientAdapter | ❌ Missing | 🟢 Medium |
-| Basic auth header extraction | ✅ Implemented | ❌ Missing | 🟢 Medium |
-| Public vs confidential clients | ✅ Supported | ❌ Missing | 🟢 Medium |
-| **Well-Known Endpoints** |
-| JWKS endpoint | ✅ Returns real keys | 🐛 Empty array | 🔴 Critical |
-| OAuth server metadata | ✅ Complete | ⚠️ Incomplete claims | 🟡 High |
-| OIDC configuration | ❌ N/A | ⚠️ Incomplete | 🟢 Medium |
-| **Provider Integration** |
-| Provider routing | ✅ Dynamic routes | ✅ Dynamic routes | ✅ OK |
-| Provider success callback | ✅ Full flow | 🐛 Broken flow | 🔴 Critical |
-| Provider client credentials | ✅ Supported | ❌ Missing | 🟡 High |
-| **Error Handling** |
-| OAuth error formatting | ✅ Spec-compliant | ✅ Spec-compliant | ✅ OK |
-| Error redirects | ✅ To redirect_uri | ✅ To redirect_uri | ✅ OK |
-| Unknown state error | ✅ Handled | ✅ Handled | ✅ OK |
-| **Audit & Monitoring** |
-| Audit service integration | ✅ Optional | ❌ Missing | 🟢 Medium |
-| Token usage events | ✅ All events | ❌ Missing | 🟢 Medium |
-| Logging | ✅ logger() middleware | ✅ logger() middleware | ✅ OK |
-| **Enterprise-Specific Features** |
-| Multi-tenant support | ❌ N/A | ✅ Implemented | ✅ OK |
-| Tenant resolution | ❌ N/A | ✅ Middleware | ✅ OK |
-| Session management | ❌ N/A | ✅ Middleware | ✅ OK |
-| RBAC integration | ❌ N/A | ✅ Token enrichment | ✅ OK |
-| Tenant-scoped storage | ❌ N/A | ⚠️ Partial | 🟢 Medium |
-| Account picker UI | ❌ N/A | ✅ Implemented | ✅ OK |
-| OIDC prompt parameter | ❌ N/A | ✅ Implemented | ✅ OK |
-| Multiple browser sessions | ❌ N/A | ✅ Implemented | ✅ OK |
+| `ctx.subject()` implementation        | ✅ Returns tokens                | 🐛 Returns JSON, not tokens        | 🔴 Critical |
+| Response type 'code'                  | ✅ Generates auth code           | ❌ Missing                         | 🔴 Critical |
+| Response type 'token'                 | ✅ Implicit flow                 | ❌ Missing                         | 🔴 Critical |
+| Redirect with tokens                  | ✅ Proper OAuth redirects        | ❌ Missing                         | 🔴 Critical |
+| **Cryptographic Operations**          |
+| Signing keys (JWT)                    | ✅ RS256 with rotation           | ❌ Missing                         | 🔴 Critical |
+| Encryption keys                       | ✅ RSA-OAEP-512                  | ❌ Missing                         | 🔴 Critical |
+| Cookie encryption                     | ✅ Full encryption               | 🐛 No encryption (plain JSON)      | 🔴 Critical |
+| JWKS endpoint                         | ✅ Returns public keys           | 🐛 Returns empty array             | 🔴 Critical |
+| **Cookie/State Management**           |
+| `auth.set()` - encryption             | ✅ Encrypted JWE                 | 🐛 Plain JSON.stringify            | 🔴 Critical |
+| `auth.get()` - decryption             | ✅ Decrypts JWE                  | 🐛 Plain JSON.parse                | 🔴 Critical |
+| `auth.unset()`                        | ✅ Proper deletion               | ✅ Works                           | ✅ OK       |
+| Authorization cookie TTL              | ✅ 24 hours                      | ⚠️ Not set                         | 🟡 High     |
+| Secure/SameSite flags                 | ✅ Correct settings              | ✅ Correct                         | ✅ OK       |
+| **Storage Operations**                |
+| OAuth code storage                    | ✅ Implemented                   | ❌ Missing                         | 🔴 Critical |
+| Refresh token storage                 | ✅ With next token               | ❌ Missing                         | 🔴 Critical |
+| Token invalidation                    | ✅ Scan & delete                 | ⚠️ Placeholder only                | 🟡 High     |
+| **Token Security**                    |
+| Refresh token reuse detection         | ✅ Time window + retention       | ❌ Missing                         | 🟡 High     |
+| Token revocation (RFC 7009)           | ✅ Full support                  | ❌ Missing                         | 🟡 High     |
+| Token introspection (RFC 7662)        | ✅ Full support                  | ❌ Missing                         | 🟡 High     |
+| Rate limiting                         | ✅ Sliding window                | ❌ Missing                         | 🟢 Medium   |
+| JTI (token ID) in access tokens       | ✅ Generated                     | ❌ Missing                         | 🟡 High     |
+| **Client Authentication**             |
+| Client credentials flow               | ✅ Implemented                   | ❌ Missing                         | 🟡 High     |
+| Client authenticator integration      | ✅ D1ClientAdapter               | ❌ Missing                         | 🟢 Medium   |
+| Basic auth header extraction          | ✅ Implemented                   | ❌ Missing                         | 🟢 Medium   |
+| Public vs confidential clients        | ✅ Supported                     | ❌ Missing                         | 🟢 Medium   |
+| **Well-Known Endpoints**              |
+| JWKS endpoint                         | ✅ Returns real keys             | 🐛 Empty array                     | 🔴 Critical |
+| OAuth server metadata                 | ✅ Complete                      | ⚠️ Incomplete claims               | 🟡 High     |
+| OIDC configuration                    | ❌ N/A                           | ⚠️ Incomplete                      | 🟢 Medium   |
+| **Provider Integration**              |
+| Provider routing                      | ✅ Dynamic routes                | ✅ Dynamic routes                  | ✅ OK       |
+| Provider success callback             | ✅ Full flow                     | 🐛 Broken flow                     | 🔴 Critical |
+| Provider client credentials           | ✅ Supported                     | ❌ Missing                         | 🟡 High     |
+| **Error Handling**                    |
+| OAuth error formatting                | ✅ Spec-compliant                | ✅ Spec-compliant                  | ✅ OK       |
+| Error redirects                       | ✅ To redirect_uri               | ✅ To redirect_uri                 | ✅ OK       |
+| Unknown state error                   | ✅ Handled                       | ✅ Handled                         | ✅ OK       |
+| **Audit & Monitoring**                |
+| Audit service integration             | ✅ Optional                      | ❌ Missing                         | 🟢 Medium   |
+| Token usage events                    | ✅ All events                    | ❌ Missing                         | 🟢 Medium   |
+| Logging                               | ✅ logger() middleware           | ✅ logger() middleware             | ✅ OK       |
+| **Enterprise-Specific Features**      |
+| Multi-tenant support                  | ❌ N/A                           | ✅ Implemented                     | ✅ OK       |
+| Tenant resolution                     | ❌ N/A                           | ✅ Middleware                      | ✅ OK       |
+| Session management                    | ❌ N/A                           | ✅ Middleware                      | ✅ OK       |
+| RBAC integration                      | ❌ N/A                           | ✅ Token enrichment                | ✅ OK       |
+| Tenant-scoped storage                 | ❌ N/A                           | ⚠️ Partial                         | 🟢 Medium   |
+| Account picker UI                     | ❌ N/A                           | ✅ Implemented                     | ✅ OK       |
+| OIDC prompt parameter                 | ❌ N/A                           | ✅ Implemented                     | ✅ OK       |
+| Multiple browser sessions             | ❌ N/A                           | ✅ Implemented                     | ✅ OK       |
 
 **Legend:**
+
 - ✅ Working - Feature is fully implemented and functional
 - ⚠️ Partial - Feature is partially implemented or has limitations
 - ❌ Missing - Feature is completely absent
@@ -111,6 +112,7 @@ The enterprise issuer (`/src/enterprise/issuer.ts`) is **significantly incomplet
 **Impact:** No way to exchange authorization codes for tokens. OAuth flow is non-functional.
 
 **Regular Issuer:**
+
 ```typescript
 app.post("/token", cors({...}), async (c) => {
   const form = await c.req.formData()
@@ -141,11 +143,13 @@ app.post("/token", cors({...}), async (c) => {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - endpoint doesn't exist at all
 ```
 
 **Fix Required:**
+
 - Implement full `/token` endpoint with all 3 grant types
 - Add PKCE validation for authorization_code grant
 - Add refresh token reuse detection
@@ -160,23 +164,28 @@ app.post("/token", cors({...}), async (c) => {
 **Impact:** No JWT signing, no token creation, OAuth is non-functional.
 
 **Regular Issuer:**
+
 ```typescript
-async function generateTokens(ctx: Context, value: {
-  type: string
-  properties: any
-  subject: string
-  clientID: string
-  ttl: { access: number; refresh: number }
-  timeUsed?: number
-  nextToken?: string
-}) {
+async function generateTokens(
+  ctx: Context,
+  value: {
+    type: string
+    properties: any
+    subject: string
+    clientID: string
+    ttl: { access: number; refresh: number }
+    timeUsed?: number
+    nextToken?: string
+  },
+) {
   const refreshToken = value.nextToken ?? crypto.randomUUID()
 
   // Store next refresh token for rotation
-  await Storage.set(storage!,
+  await Storage.set(
+    storage!,
     ["oauth:refresh", value.subject, refreshToken],
     { ...value, nextToken: crypto.randomUUID() },
-    value.ttl.refresh
+    value.ttl.refresh,
   )
 
   // Sign JWT access token
@@ -191,13 +200,17 @@ async function generateTokens(ctx: Context, value: {
       sub: value.subject,
     })
       .setExpirationTime(Math.floor(accessTimeUsed + value.ttl.access))
-      .setProtectedHeader(await signingKey().then((k) => ({
-        alg: k.alg,
-        kid: k.id,
-        typ: "JWT",
-      })))
+      .setProtectedHeader(
+        await signingKey().then((k) => ({
+          alg: k.alg,
+          kid: k.id,
+          typ: "JWT",
+        })),
+      )
       .sign(await signingKey().then((item) => item.private)),
-    expiresIn: Math.floor(accessTimeUsed + value.ttl.access - Date.now() / 1000),
+    expiresIn: Math.floor(
+      accessTimeUsed + value.ttl.access - Date.now() / 1000,
+    ),
     refresh: [value.subject, refreshToken].join(":"),
   }
 
@@ -206,6 +219,7 @@ async function generateTokens(ctx: Context, value: {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no generateTokens function exists
 // No JWT signing logic
@@ -213,6 +227,7 @@ async function generateTokens(ctx: Context, value: {
 ```
 
 **Fix Required:**
+
 - Implement `generateTokens()` function
 - Set up signing keys with lazy loading
 - Implement refresh token rotation
@@ -227,6 +242,7 @@ async function generateTokens(ctx: Context, value: {
 **Impact:** Cannot sign JWTs, cannot encrypt cookies, complete security failure.
 
 **Regular Issuer:**
+
 ```typescript
 const allSigning = lazy(() =>
   Promise.all([signingKeys(storage), legacySigningKeys(storage)]).then(
@@ -239,6 +255,7 @@ const encryptionKey = lazy(() => allEncryption().then((all) => all[0]))
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no key setup at all
 // No signingKey()
@@ -247,6 +264,7 @@ const encryptionKey = lazy(() => allEncryption().then((all) => all[0]))
 ```
 
 **Fix Required:**
+
 - Import and set up `signingKeys()`, `encryptionKeys()`, `legacySigningKeys()`
 - Create lazy loaders for keys
 - Implement key rotation support
@@ -259,6 +277,7 @@ const encryptionKey = lazy(() => allEncryption().then((all) => all[0]))
 **Impact:** Authorization state is stored in plain text cookies. Critical security vulnerability.
 
 **Regular Issuer:**
+
 ```typescript
 async set(ctx, key, maxAge, value) {
   setCookie(ctx, key, await encrypt(value), {
@@ -280,6 +299,7 @@ async function encrypt(value: any) {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 async set(ctx, key, maxAge, value) {
   const { setCookie } = await import("hono/cookie")
@@ -305,6 +325,7 @@ async get(ctx: Context, key: string) {
 ```
 
 **Fix Required:**
+
 - Implement `encrypt()` function using CompactEncrypt
 - Implement `decrypt()` function using compactDecrypt
 - Use encryption in `auth.set()` and `auth.get()`
@@ -316,6 +337,7 @@ async get(ctx: Context, key: string) {
 **Impact:** After authentication, tokens are not issued. OAuth flow breaks.
 
 **Regular Issuer:**
+
 ```typescript
 async subject(type, properties, subjectOpts) {
   const authorization = await getAuthorization(ctx)
@@ -347,6 +369,7 @@ async subject(type, properties, subjectOpts) {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 async subject(type, props, opts) {
   // Add account to session (good!)
@@ -372,6 +395,7 @@ async subject(type, props, opts) {
 ```
 
 **Fix Required:**
+
 - Implement authorization code generation and storage
 - Implement token generation for implicit flow
 - Build proper OAuth redirect responses
@@ -385,6 +409,7 @@ async subject(type, props, opts) {
 **Impact:** Clients cannot verify JWT signatures. Token validation is impossible.
 
 **Regular Issuer:**
+
 ```typescript
 app.get("/.well-known/jwks.json", cors({...}), async (c) => {
   const all = await allSigning()
@@ -401,6 +426,7 @@ app.get("/.well-known/jwks.json", cors({...}), async (c) => {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 app.get("/.well-known/jwks.json", cors({...}), async (c) => {
   // ❌ WRONG - returns empty array!
@@ -409,6 +435,7 @@ app.get("/.well-known/jwks.json", cors({...}), async (c) => {
 ```
 
 **Fix Required:**
+
 - Load signing keys from storage
 - Convert keys to JWK format
 - Return proper JWKS response with key metadata
@@ -420,6 +447,7 @@ app.get("/.well-known/jwks.json", cors({...}), async (c) => {
 **Impact:** Code exchange will fail. No way to retrieve authorization payload.
 
 **Regular Issuer:**
+
 ```typescript
 if (authorization.response_type === "code") {
   const code = crypto.randomUUID()
@@ -445,11 +473,13 @@ if (authorization.response_type === "code") {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no code storage, no code generation
 ```
 
 **Fix Required:**
+
 - Generate authorization codes
 - Store code with payload in tenant-scoped storage
 - Set 60-second TTL
@@ -462,34 +492,45 @@ if (authorization.response_type === "code") {
 **Impact:** Public clients (SPAs, mobile apps) are vulnerable to authorization code interception.
 
 **Regular Issuer:**
+
 ```typescript
 if (payload.pkce) {
   const codeVerifier = form.get("code_verifier")?.toString()
   if (!codeVerifier)
-    return c.json({
-      error: "invalid_grant",
-      error_description: "Missing code_verifier",
-    }, 400)
+    return c.json(
+      {
+        error: "invalid_grant",
+        error_description: "Missing code_verifier",
+      },
+      400,
+    )
 
-  if (!(await validatePKCE(
-    codeVerifier,
-    payload.pkce.challenge,
-    payload.pkce.method,
-  ))) {
-    return c.json({
-      error: "invalid_grant",
-      error_description: "Code verifier does not match",
-    }, 400)
+  if (
+    !(await validatePKCE(
+      codeVerifier,
+      payload.pkce.challenge,
+      payload.pkce.method,
+    ))
+  ) {
+    return c.json(
+      {
+        error: "invalid_grant",
+        error_description: "Code verifier does not match",
+      },
+      400,
+    )
   }
 }
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no PKCE validation in enterprise issuer
 ```
 
 **Fix Required:**
+
 - Import `validatePKCE` from `../pkce.js`
 - Validate code_verifier in `/token` endpoint
 - Support S256 method
@@ -501,6 +542,7 @@ if (payload.pkce) {
 **Impact:** Cannot retrieve authorization parameters after provider callback.
 
 **Regular Issuer:**
+
 ```typescript
 async function getAuthorization(ctx: Context) {
   const match =
@@ -514,6 +556,7 @@ const authorization = await getAuthorization(ctx)
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // No getAuthorization() function
 // Provider success callback cannot retrieve auth state
@@ -529,6 +572,7 @@ const authorization = ctx.get("authorization") as
 ```
 
 **Fix Required:**
+
 - Implement `getAuthorization()` helper
 - Store authorization state in encrypted cookie during `/authorize`
 - Retrieve from cookie in provider success callback
@@ -541,6 +585,7 @@ const authorization = ctx.get("authorization") as
 **Impact:** OIDC clients cannot retrieve user information. OIDC compliance is broken.
 
 **Regular Issuer:**
+
 ```typescript
 app.get("/userinfo", async (c) => {
   const header = c.req.header("Authorization")
@@ -574,11 +619,13 @@ app.get("/userinfo", async (c) => {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - /userinfo endpoint doesn't exist
 ```
 
 **Fix Required:**
+
 - Implement `/userinfo` endpoint
 - Extract and verify Bearer token
 - Validate JWT signature
@@ -594,6 +641,7 @@ app.get("/userinfo", async (c) => {
 **Impact:** Refresh tokens can be reused maliciously. No security against token replay attacks.
 
 **Regular Issuer:**
+
 ```typescript
 if (grantType === "refresh_token") {
   const payload = await Storage.get(storage, key)
@@ -622,11 +670,13 @@ if (grantType === "refresh_token") {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no refresh token logic at all
 ```
 
 **Fix Required:**
+
 - Implement refresh token storage
 - Track `timeUsed` timestamp
 - Implement reuse window (default 60 seconds)
@@ -640,6 +690,7 @@ if (grantType === "refresh_token") {
 **Impact:** Cannot revoke user sessions. No way to force logout.
 
 **Regular Issuer:**
+
 ```typescript
 async invalidate(subject: string) {
   // Scan all refresh tokens for this subject
@@ -653,6 +704,7 @@ async invalidate(subject: string) {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 async invalidate(subject: string) {
   // ⚠️ PLACEHOLDER - doesn't actually do anything
@@ -665,6 +717,7 @@ async invalidate(subject: string) {
 ```
 
 **Fix Required:**
+
 - Implement Storage.scan() for tenant-scoped storage
 - Remove all refresh tokens for subject
 - Handle tenant isolation properly
@@ -677,6 +730,7 @@ async invalidate(subject: string) {
 **Impact:** No way to revoke tokens. Cannot implement logout functionality.
 
 **Regular Issuer:**
+
 ```typescript
 app.post("/token/revoke", async (c) => {
   if (!clientAuthenticator) { return 501 }
@@ -704,11 +758,13 @@ app.post("/token/revoke", async (c) => {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - /token/revoke endpoint doesn't exist
 ```
 
 **Fix Required:**
+
 - Implement `/token/revoke` endpoint
 - Support both access and refresh tokens
 - Implement client authentication
@@ -722,6 +778,7 @@ app.post("/token/revoke", async (c) => {
 **Impact:** Resource servers cannot validate tokens. No introspection capability.
 
 **Regular Issuer:**
+
 ```typescript
 app.post("/token/introspect", async (c) => {
   if (!clientAuthenticator) { return 501 }
@@ -761,11 +818,13 @@ app.post("/token/introspect", async (c) => {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - /token/introspect endpoint doesn't exist
 ```
 
 **Fix Required:**
+
 - Implement `/token/introspect` endpoint
 - Require client authentication
 - Check token ownership (aud claim)
@@ -780,6 +839,7 @@ app.post("/token/introspect", async (c) => {
 **Impact:** Cannot authenticate confidential clients. Client credentials flow is broken.
 
 **Regular Issuer:**
+
 ```typescript
 let clientAuthenticator: ClientAuthenticator | undefined
 if (input.clientDb) {
@@ -791,7 +851,11 @@ if (input.clientDb) {
   })
 }
 
-function extractClientCredentials(c: Context, form: FormData, requireSecret: boolean = true) {
+function extractClientCredentials(
+  c: Context,
+  form: FormData,
+  requireSecret: boolean = true,
+) {
   const authHeader = c.req.header("Authorization")
   let clientId: string | undefined
   let clientSecret: string | undefined
@@ -817,6 +881,7 @@ function extractClientCredentials(c: Context, form: FormData, requireSecret: boo
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no client authentication setup
 // No ClientAuthenticator
@@ -825,6 +890,7 @@ function extractClientCredentials(c: Context, form: FormData, requireSecret: boo
 ```
 
 **Fix Required:**
+
 - Set up ClientAuthenticator if clientDb provided
 - Implement extractClientCredentials() helper
 - Support Basic auth and form data
@@ -837,6 +903,7 @@ function extractClientCredentials(c: Context, form: FormData, requireSecret: boo
 **Impact:** Cannot track revoked tokens. No JTI-based revocation.
 
 **Regular Issuer:**
+
 ```typescript
 const revocationService = new RevocationService({
   storage,
@@ -856,6 +923,7 @@ const tokens = {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no RevocationService
 // No JTI in access tokens
@@ -863,6 +931,7 @@ const tokens = {
 ```
 
 **Fix Required:**
+
 - Initialize RevocationService
 - Add JTI to access token claims
 - Implement revocation checking
@@ -875,6 +944,7 @@ const tokens = {
 **Impact:** CSRF protection may be weak.
 
 **Regular Issuer:**
+
 ```typescript
 // State is stored in authorization cookie
 await auth.set(c, "authorization", AUTHORIZATION_COOKIE_TTL, authorization)
@@ -885,6 +955,7 @@ const authorization = await getAuthorization(ctx)
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // State is in context but not validated from encrypted cookie
 const authorization = ctx.get("authorization") as
@@ -896,6 +967,7 @@ const authorization = ctx.get("authorization") as
 ```
 
 **Fix Required:**
+
 - Store authorization state in encrypted cookie
 - Validate state from cookie in provider callback
 - Throw UnknownStateError if state is missing/invalid
@@ -907,6 +979,7 @@ const authorization = ctx.get("authorization") as
 **Impact:** Service-to-service authentication is broken. M2M auth doesn't work.
 
 **Regular Issuer:**
+
 ```typescript
 if (grantType === "client_credentials") {
   const provider = form.get("provider")
@@ -937,11 +1010,13 @@ if (grantType === "client_credentials") {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - client_credentials grant not implemented
 ```
 
 **Fix Required:**
+
 - Implement client_credentials grant in /token endpoint
 - Validate client credentials
 - Call provider.client() if supported
@@ -956,6 +1031,7 @@ if (grantType === "client_credentials") {
 **Impact:** No protection against brute force or DoS attacks.
 
 **Regular Issuer:**
+
 ```typescript
 async function checkRateLimit(
   clientId: string,
@@ -985,19 +1061,24 @@ async function checkRateLimit(
 // Used in introspection and revocation endpoints
 const allowed = await checkRateLimit(credentials.clientId!, "token_introspect")
 if (!allowed) {
-  return c.json({
-    error: "slow_down",
-    error_description: "Rate limit exceeded. Please try again later.",
-  }, 429)
+  return c.json(
+    {
+      error: "slow_down",
+      error_description: "Rate limit exceeded. Please try again later.",
+    },
+    429,
+  )
 }
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no rate limiting
 ```
 
 **Fix Required:**
+
 - Implement checkRateLimit() function
 - Apply to /token, /token/introspect, /token/revoke
 - Use sliding window algorithm
@@ -1010,6 +1091,7 @@ if (!allowed) {
 **Impact:** No audit trail for token operations. Compliance and debugging issues.
 
 **Regular Issuer:**
+
 ```typescript
 // In token generation:
 if (input.audit?.hooks?.onTokenGenerated) {
@@ -1039,11 +1121,13 @@ if (input.audit?.hooks?.onTokenRevoked) {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // NOTHING - no audit integration
 ```
 
 **Fix Required:**
+
 - Add audit config to EnterpriseIssuerConfig
 - Fire audit events for token operations
 - Add tenant_id to audit logs
@@ -1056,6 +1140,7 @@ if (input.audit?.hooks?.onTokenRevoked) {
 **Impact:** Token isolation between tenants may be weak.
 
 **Regular Issuer:**
+
 ```typescript
 // Direct storage operations
 await Storage.set(storage, ["oauth:code", code], {...}, 60)
@@ -1064,6 +1149,7 @@ await Storage.remove(storage, ["oauth:code", code])
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // Tenant storage wrapper exists but not used consistently
 const tenantStorage = getTenantStorage(ctx)
@@ -1074,6 +1160,7 @@ const storage = tenantStorage || config.storage
 ```
 
 **Fix Required:**
+
 - Use TenantStorageImpl consistently
 - Prefix all storage keys with tenant_id
 - Ensure token isolation
@@ -1086,6 +1173,7 @@ const storage = tenantStorage || config.storage
 **Impact:** Clients may not discover all capabilities correctly.
 
 **Regular Issuer:**
+
 ```typescript
 app.get("/.well-known/oauth-authorization-server", async (c) => {
   const iss = issuer(c)
@@ -1105,6 +1193,7 @@ app.get("/.well-known/oauth-authorization-server", async (c) => {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 app.get("/.well-known/oauth-authorization-server", async (c) => {
   // Similar, but missing some claims:
@@ -1116,6 +1205,7 @@ app.get("/.well-known/oauth-authorization-server", async (c) => {
 ```
 
 **Fix Required:**
+
 - Add missing endpoints to metadata
 - Add `userinfo_endpoint`
 - Add `revocation_endpoint`
@@ -1129,6 +1219,7 @@ app.get("/.well-known/oauth-authorization-server", async (c) => {
 **Impact:** OIDC clients may have incomplete configuration.
 
 **Enterprise Issuer:**
+
 ```typescript
 app.get("/.well-known/openid-configuration", async (c) => {
   return c.json({
@@ -1142,6 +1233,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 ```
 
 **Fix Required:**
+
 - Add logout endpoints
 - Add session management endpoints
 - Add logout capabilities
@@ -1154,6 +1246,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 ### `/authorize` Endpoint
 
 **Regular Issuer Flow:**
+
 1. Extract query parameters ✅
 2. Build authorization state ✅
 3. Validate required parameters (redirect_uri, response_type, client_id) ✅
@@ -1163,6 +1256,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 7. Redirect to provider or show provider selection ✅
 
 **Enterprise Issuer Flow:**
+
 1. Extract query parameters (including OIDC params) ✅
 2. Build authorization state (EnterpriseAuthorizationState) ✅
 3. Validate required parameters ✅
@@ -1175,6 +1269,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 10. Redirect to provider or show provider/account selection ✅
 
 **Gaps:**
+
 - Authorization state is NOT stored in encrypted cookie
 - Authorization state will be lost after provider redirect
 - Provider success callback cannot retrieve authorization parameters
@@ -1185,6 +1280,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 ### Provider Success Callback
 
 **Regular Issuer Flow:**
+
 1. Provider calls `auth.success()` with authentication result ✅
 2. `auth.success()` wraps it with `ctx.subject()` ✅
 3. User's `input.success()` callback is called ✅
@@ -1195,6 +1291,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 8. **Redirects to redirect_uri with code/tokens** ✅
 
 **Enterprise Issuer Flow:**
+
 1. Provider calls `auth.success()` with authentication result ✅
 2. Get tenant from context ✅
 3. Get or create browser session ✅
@@ -1208,6 +1305,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 11. **❌ MISSING: No OAuth redirect**
 
 **Gaps:**
+
 - `ctx.subject()` returns JSON instead of OAuth response
 - No authorization code flow implementation
 - No implicit flow (response_type=token) implementation
@@ -1219,6 +1317,7 @@ app.get("/.well-known/openid-configuration", async (c) => {
 ### Cookie/State Management
 
 **Regular Issuer:**
+
 ```typescript
 // ENCRYPTED cookies
 async set(ctx, key, maxAge, value) {
@@ -1254,6 +1353,7 @@ async function decrypt(value: string) {
 ```
 
 **Enterprise Issuer:**
+
 ```typescript
 // PLAIN TEXT cookies (security vulnerability!)
 async set(ctx, key, maxAge, value) {
@@ -1317,6 +1417,7 @@ Authorization state (including PKCE challenges, redirect URIs, client IDs) is st
 ## Recommended Implementation Order
 
 ### Phase 1: Core OAuth Flow (Days 1-3)
+
 1. Set up signing and encryption keys
 2. Implement encrypt/decrypt for cookies
 3. Implement getAuthorization() helper
@@ -1325,6 +1426,7 @@ Authorization state (including PKCE challenges, redirect URIs, client IDs) is st
 6. Fix ctx.subject() to generate codes and redirect
 
 ### Phase 2: Token Endpoint (Days 4-5)
+
 7. Implement `/token` endpoint with authorization_code grant
 8. Add PKCE validation
 9. Add refresh_token grant with reuse detection
@@ -1332,6 +1434,7 @@ Authorization state (including PKCE challenges, redirect URIs, client IDs) is st
 11. Fix JWKS endpoint to return real keys
 
 ### Phase 3: OIDC & Security (Days 6-7)
+
 12. Implement `/userinfo` endpoint
 13. Fix token invalidation with tenant scoping
 14. Add RevocationService and `/token/revoke`
@@ -1339,6 +1442,7 @@ Authorization state (including PKCE challenges, redirect URIs, client IDs) is st
 16. Add client authentication
 
 ### Phase 4: Production Readiness (Days 8-9)
+
 17. Add rate limiting to all token endpoints
 18. Integrate audit logging
 19. Improve tenant-scoped storage
@@ -1347,6 +1451,7 @@ Authorization state (including PKCE challenges, redirect URIs, client IDs) is st
 22. Add unit tests
 
 ### Phase 5: Documentation & Testing (Day 10)
+
 23. Document enterprise-specific OAuth flows
 24. Add integration tests
 25. Update API documentation
@@ -1357,18 +1462,21 @@ Authorization state (including PKCE challenges, redirect URIs, client IDs) is st
 ## Risk Assessment
 
 ### Critical Risks
+
 - **Security Vulnerability:** Plain text cookies expose authorization state
 - **Non-Functional:** OAuth flow is completely broken without `/token` endpoint
 - **Data Leakage:** No tenant isolation for tokens
 - **Auth Bypass:** No PKCE validation allows code interception
 
 ### Business Impact
+
 - **Cannot Deploy to Production:** Enterprise issuer is not functional
 - **Security Audit Failure:** Major vulnerabilities in cookie handling
 - **OIDC Non-Compliance:** Missing required endpoints
 - **No Token Management:** Cannot revoke or introspect tokens
 
 ### Technical Debt
+
 - **Incomplete Implementation:** ~70% of OAuth features missing
 - **Copy-Paste Required:** Must duplicate logic from regular issuer
 - **Maintenance Burden:** Two issuers with different capabilities
@@ -1381,6 +1489,7 @@ Authorization state (including PKCE challenges, redirect URIs, client IDs) is st
 After implementing fixes, test these scenarios:
 
 ### Authorization Code Flow
+
 1. ✅ Start `/authorize` request with PKCE
 2. ✅ Authorization state is encrypted in cookie
 3. ✅ Redirect to provider
@@ -1394,6 +1503,7 @@ After implementing fixes, test these scenarios:
 11. ✅ JWT includes RBAC claims and tenant_id
 
 ### Refresh Token Flow
+
 1. ✅ Submit refresh token to `/token`
 2. ✅ Validate refresh token exists in storage
 3. ✅ Detect reuse if used before
@@ -1402,18 +1512,21 @@ After implementing fixes, test these scenarios:
 6. ✅ Return new access and refresh tokens
 
 ### Client Credentials Flow
+
 1. ✅ Submit client_id and client_secret to `/token`
 2. ✅ Validate client credentials
 3. ✅ Call provider.client() if supported
 4. ✅ Return access token (no refresh token)
 
 ### Token Revocation
+
 1. ✅ Submit token to `/token/revoke`
 2. ✅ Authenticate client
 3. ✅ Revoke token
 4. ✅ Return success (always)
 
 ### Token Introspection
+
 1. ✅ Submit token to `/token/introspect`
 2. ✅ Authenticate client
 3. ✅ Verify token ownership
@@ -1421,6 +1534,7 @@ After implementing fixes, test these scenarios:
 5. ✅ Return active status and claims
 
 ### Multi-Tenant Scenarios
+
 1. ✅ Tokens are isolated per tenant
 2. ✅ Token invalidation is tenant-scoped
 3. ✅ RBAC claims are tenant-specific
