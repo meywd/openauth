@@ -1,7 +1,45 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { AccountSwitcher } from "./account-switcher"
+import {
+  type Theme,
+  type ColorScheme,
+  DEFAULT_THEME,
+} from "./account-switcher.types"
+
+/**
+ * Helper to get color value from theme (handles string or ColorScheme)
+ */
+function getColor(
+  color: string | ColorScheme | undefined,
+  mode: "light" | "dark",
+  fallback: string,
+): string {
+  if (!color) return fallback
+  if (typeof color === "string") return color
+  return color[mode] || fallback
+}
+
+/**
+ * Helper to get border radius value from theme
+ */
+function getRadius(radius?: Theme["radius"]): string {
+  switch (radius) {
+    case "none":
+      return "0"
+    case "sm":
+      return "4px"
+    case "md":
+      return "8px"
+    case "lg":
+      return "12px"
+    case "full":
+      return "9999px"
+    default:
+      return "8px"
+  }
+}
 
 /**
  * AccountSwitcherDropdown Component
@@ -33,16 +71,42 @@ import { AccountSwitcher } from "./account-switcher"
 export function AccountSwitcherDropdown({
   apiBaseUrl = "/api",
   authorizeUrl = "/authorize",
+  theme: themeProp,
   onAccountSwitch,
   onSignOut,
 }: {
   apiBaseUrl?: string
   authorizeUrl?: string
+  theme?: Theme
   onAccountSwitch?: (userId: string) => void
   onSignOut?: () => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Merge provided theme with defaults
+  const theme = useMemo(() => ({ ...DEFAULT_THEME, ...themeProp }), [themeProp])
+
+  // Generate CSS variables from theme
+  const themeStyles = useMemo(() => {
+    const primaryLight = getColor(theme.primary, "light", "#3b82f6")
+    const primaryDark = getColor(theme.primary, "dark", "#60a5fa")
+    const bgLight = getColor(theme.background, "light", "#ffffff")
+    const bgDark = getColor(theme.background, "dark", "#111827")
+    const radius = getRadius(theme.radius)
+    const fontFamily =
+      theme.font?.family ||
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+
+    return {
+      "--asd-primary-light": primaryLight,
+      "--asd-primary-dark": primaryDark,
+      "--asd-bg-light": bgLight,
+      "--asd-bg-dark": bgDark,
+      "--asd-radius": radius,
+      "--asd-font-family": fontFamily,
+    } as React.CSSProperties
+  }, [theme])
 
   /**
    * Close dropdown when clicking outside
@@ -86,10 +150,15 @@ export function AccountSwitcherDropdown({
   }, [isOpen])
 
   return (
-    <div className="account-switcher-dropdown" ref={dropdownRef}>
+    <div
+      className="account-switcher-dropdown"
+      ref={dropdownRef}
+      style={themeStyles}
+    >
       <style jsx>{`
         .account-switcher-dropdown {
           position: relative;
+          font-family: var(--asd-font-family, inherit);
         }
 
         .trigger-button {
@@ -97,38 +166,100 @@ export function AccountSwitcherDropdown({
           align-items: center;
           gap: 8px;
           padding: 8px 12px;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 6px;
+          background: var(--asd-bg-light, white);
+          border: 1px solid
+            color-mix(in srgb, var(--asd-primary-light) 20%, transparent);
+          border-radius: var(--asd-radius, 6px);
           cursor: pointer;
           transition: all 0.15s;
           font-size: 14px;
           font-weight: 500;
           color: #111827;
+          font-family: var(--asd-font-family, inherit);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .trigger-button {
+            background: var(--asd-bg-dark, #111827);
+            border-color: color-mix(
+              in srgb,
+              var(--asd-primary-dark) 30%,
+              transparent
+            );
+            color: #f9fafb;
+          }
         }
 
         .trigger-button:hover {
-          background: #f9fafb;
-          border-color: #d1d5db;
+          background: color-mix(
+            in srgb,
+            var(--asd-primary-light) 5%,
+            var(--asd-bg-light)
+          );
+          border-color: color-mix(
+            in srgb,
+            var(--asd-primary-light) 40%,
+            transparent
+          );
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .trigger-button:hover {
+            background: color-mix(
+              in srgb,
+              var(--asd-primary-dark) 10%,
+              var(--asd-bg-dark)
+            );
+            border-color: color-mix(
+              in srgb,
+              var(--asd-primary-dark) 50%,
+              transparent
+            );
+          }
         }
 
         .trigger-button.open {
-          background: #f9fafb;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          background: color-mix(
+            in srgb,
+            var(--asd-primary-light) 5%,
+            var(--asd-bg-light)
+          );
+          border-color: var(--asd-primary-light);
+          box-shadow: 0 0 0 3px
+            color-mix(in srgb, var(--asd-primary-light) 15%, transparent);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .trigger-button.open {
+            background: color-mix(
+              in srgb,
+              var(--asd-primary-dark) 10%,
+              var(--asd-bg-dark)
+            );
+            border-color: var(--asd-primary-dark);
+            box-shadow: 0 0 0 3px
+              color-mix(in srgb, var(--asd-primary-dark) 20%, transparent);
+          }
         }
 
         .avatar {
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+          background: var(--asd-primary-light);
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
           font-weight: 600;
           font-size: 14px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .avatar {
+            background: var(--asd-primary-dark);
+            color: #111827;
+          }
         }
 
         .chevron {
@@ -146,15 +277,28 @@ export function AccountSwitcherDropdown({
           top: calc(100% + 8px);
           right: 0;
           min-width: 400px;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
+          background: var(--asd-bg-light, white);
+          border: 1px solid
+            color-mix(in srgb, var(--asd-primary-light) 20%, transparent);
+          border-radius: var(--asd-radius, 8px);
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
           z-index: 50;
           opacity: 0;
           transform: translateY(-8px);
           pointer-events: none;
           transition: all 0.2s;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .dropdown-menu {
+            background: var(--asd-bg-dark, #111827);
+            border-color: color-mix(
+              in srgb,
+              var(--asd-primary-dark) 30%,
+              transparent
+            );
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+          }
         }
 
         .dropdown-menu.open {
@@ -171,7 +315,8 @@ export function AccountSwitcherDropdown({
             left: 0;
             right: 0;
             min-width: 100%;
-            border-radius: 16px 16px 0 0;
+            border-radius: calc(var(--asd-radius, 8px) * 2)
+              calc(var(--asd-radius, 8px) * 2) 0 0;
             transform: translateY(100%);
           }
 
@@ -228,6 +373,7 @@ export function AccountSwitcherDropdown({
         <AccountSwitcher
           apiBaseUrl={apiBaseUrl}
           authorizeUrl={authorizeUrl}
+          theme={themeProp}
           onAccountSwitch={(userId) => {
             setIsOpen(false)
             onAccountSwitch?.(userId)

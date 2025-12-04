@@ -1,55 +1,49 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import {
+  type Theme,
+  type ColorScheme,
+  DEFAULT_THEME,
+  type Account,
+  type AccountsListResponse,
+  type ErrorResponse,
+  type SuccessResponse,
+  type LoadingState,
+  type AccountSwitcherState,
+} from "./account-switcher.types"
 
 /**
- * API Response Types
- * Based on /packages/openauth/src/session/types.ts
+ * Helper to get color value from theme (handles string or ColorScheme)
  */
-
-/**
- * Account information returned from the API
- */
-interface Account {
-  userId: string
-  isActive: boolean
-  authenticatedAt: number
-  subjectType: string
-  clientId: string
+function getColor(
+  color: string | ColorScheme | undefined,
+  mode: "light" | "dark",
+  fallback: string,
+): string {
+  if (!color) return fallback
+  if (typeof color === "string") return color
+  return color[mode] || fallback
 }
 
 /**
- * Response from GET /session/accounts
+ * Helper to get border radius value from theme
  */
-interface AccountsListResponse {
-  accounts: Account[]
-}
-
-/**
- * Error response structure from API
- */
-interface ErrorResponse {
-  error: string
-  message: string
-}
-
-/**
- * Success response for operations
- */
-interface SuccessResponse {
-  success: boolean
-}
-
-/**
- * Component State Types
- */
-
-type LoadingState = "idle" | "loading" | "switching" | "removing" | "adding"
-
-interface AccountSwitcherState {
-  accounts: Account[]
-  loading: LoadingState
-  error: string | null
+function getRadius(radius?: Theme["radius"]): string {
+  switch (radius) {
+    case "none":
+      return "0"
+    case "sm":
+      return "4px"
+    case "md":
+      return "8px"
+    case "lg":
+      return "12px"
+    case "full":
+      return "9999px"
+    default:
+      return "8px"
+  }
 }
 
 /**
@@ -82,6 +76,7 @@ interface AccountSwitcherState {
 export function AccountSwitcher({
   apiBaseUrl = "/api",
   authorizeUrl = "/authorize",
+  theme: themeProp,
   onAccountSwitch,
   onSignOut,
 }: {
@@ -96,6 +91,10 @@ export function AccountSwitcher({
    */
   authorizeUrl?: string
   /**
+   * Theme configuration for styling
+   */
+  theme?: Theme
+  /**
    * Callback fired when account is switched successfully
    */
   onAccountSwitch?: (userId: string) => void
@@ -109,6 +108,30 @@ export function AccountSwitcher({
     loading: "idle",
     error: null,
   })
+
+  // Merge provided theme with defaults
+  const theme = useMemo(() => ({ ...DEFAULT_THEME, ...themeProp }), [themeProp])
+
+  // Generate CSS variables from theme
+  const themeStyles = useMemo(() => {
+    const primaryLight = getColor(theme.primary, "light", "#3b82f6")
+    const primaryDark = getColor(theme.primary, "dark", "#60a5fa")
+    const bgLight = getColor(theme.background, "light", "#ffffff")
+    const bgDark = getColor(theme.background, "dark", "#111827")
+    const radius = getRadius(theme.radius)
+    const fontFamily =
+      theme.font?.family ||
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+
+    return {
+      "--as-primary-light": primaryLight,
+      "--as-primary-dark": primaryDark,
+      "--as-bg-light": bgLight,
+      "--as-bg-dark": bgDark,
+      "--as-radius": radius,
+      "--as-font-family": fontFamily,
+    } as React.CSSProperties
+  }, [theme])
 
   /**
    * Fetch all accounts from the session API
@@ -397,22 +420,55 @@ export function AccountSwitcher({
    * Render component
    */
   return (
-    <div className="account-switcher">
+    <div className="account-switcher" style={themeStyles}>
       <style jsx>{`
         .account-switcher {
           width: 100%;
           max-width: 400px;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
+          background: var(--as-bg-light, white);
+          border: 1px solid
+            color-mix(in srgb, var(--as-primary-light) 20%, transparent);
+          border-radius: var(--as-radius, 8px);
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           overflow: hidden;
+          font-family: var(--as-font-family, inherit);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .account-switcher {
+            background: var(--as-bg-dark, #111827);
+            border-color: color-mix(
+              in srgb,
+              var(--as-primary-dark) 30%,
+              transparent
+            );
+          }
         }
 
         .switcher-header {
           padding: 16px;
-          border-bottom: 1px solid #e5e7eb;
-          background: #f9fafb;
+          border-bottom: 1px solid
+            color-mix(in srgb, var(--as-primary-light) 15%, transparent);
+          background: color-mix(
+            in srgb,
+            var(--as-primary-light) 5%,
+            var(--as-bg-light)
+          );
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .switcher-header {
+            border-bottom-color: color-mix(
+              in srgb,
+              var(--as-primary-dark) 20%,
+              transparent
+            );
+            background: color-mix(
+              in srgb,
+              var(--as-primary-dark) 10%,
+              var(--as-bg-dark)
+            );
+          }
         }
 
         .switcher-title {
@@ -422,10 +478,22 @@ export function AccountSwitcher({
           color: #111827;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .switcher-title {
+            color: #f9fafb;
+          }
+        }
+
         .switcher-subtitle {
           margin: 4px 0 0;
           font-size: 14px;
           color: #6b7280;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .switcher-subtitle {
+            color: #9ca3af;
+          }
         }
 
         .accounts-list {
@@ -438,18 +506,58 @@ export function AccountSwitcher({
           align-items: center;
           justify-content: space-between;
           padding: 12px 16px;
-          border-bottom: 1px solid #f3f4f6;
+          border-bottom: 1px solid
+            color-mix(in srgb, var(--as-primary-light) 10%, transparent);
           transition: background 0.15s;
           cursor: pointer;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .account-item {
+            border-bottom-color: color-mix(
+              in srgb,
+              var(--as-primary-dark) 15%,
+              transparent
+            );
+          }
+        }
+
         .account-item:hover {
-          background: #f9fafb;
+          background: color-mix(
+            in srgb,
+            var(--as-primary-light) 5%,
+            var(--as-bg-light)
+          );
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .account-item:hover {
+            background: color-mix(
+              in srgb,
+              var(--as-primary-dark) 10%,
+              var(--as-bg-dark)
+            );
+          }
         }
 
         .account-item.active {
-          background: #eff6ff;
-          border-left: 3px solid #3b82f6;
+          background: color-mix(
+            in srgb,
+            var(--as-primary-light) 10%,
+            var(--as-bg-light)
+          );
+          border-left: 3px solid var(--as-primary-light);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .account-item.active {
+            background: color-mix(
+              in srgb,
+              var(--as-primary-dark) 15%,
+              var(--as-bg-dark)
+            );
+            border-left-color: var(--as-primary-dark);
+          }
         }
 
         .account-info {
@@ -467,8 +575,20 @@ export function AccountSwitcher({
           text-overflow: ellipsis;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .account-user-id {
+            color: #f9fafb;
+          }
+        }
+
         .account-item.active .account-user-id {
-          color: #1e40af;
+          color: var(--as-primary-light);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .account-item.active .account-user-id {
+            color: var(--as-primary-dark);
+          }
         }
 
         .account-meta {
@@ -479,15 +599,28 @@ export function AccountSwitcher({
           align-items: center;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .account-meta {
+            color: #9ca3af;
+          }
+        }
+
         .account-badge {
           display: inline-block;
           padding: 2px 6px;
-          background: #3b82f6;
+          background: var(--as-primary-light);
           color: white;
           font-size: 10px;
           font-weight: 600;
-          border-radius: 4px;
+          border-radius: calc(var(--as-radius, 8px) / 2);
           text-transform: uppercase;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .account-badge {
+            background: var(--as-primary-dark);
+            color: #111827;
+          }
         }
 
         .account-actions {
@@ -500,10 +633,11 @@ export function AccountSwitcher({
           font-size: 13px;
           font-weight: 500;
           border: none;
-          border-radius: 4px;
+          border-radius: calc(var(--as-radius, 8px) / 2);
           cursor: pointer;
           transition: all 0.15s;
           white-space: nowrap;
+          font-family: var(--as-font-family, inherit);
         }
 
         .btn:disabled {
@@ -512,12 +646,19 @@ export function AccountSwitcher({
         }
 
         .btn-switch {
-          background: #3b82f6;
+          background: var(--as-primary-light);
           color: white;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .btn-switch {
+            background: var(--as-primary-dark);
+            color: #111827;
+          }
+        }
+
         .btn-switch:hover:not(:disabled) {
-          background: #2563eb;
+          filter: brightness(0.9);
         }
 
         .btn-remove {
@@ -531,19 +672,37 @@ export function AccountSwitcher({
 
         .switcher-footer {
           padding: 12px 16px;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid
+            color-mix(in srgb, var(--as-primary-light) 15%, transparent);
           display: flex;
           gap: 8px;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .switcher-footer {
+            border-top-color: color-mix(
+              in srgb,
+              var(--as-primary-dark) 20%,
+              transparent
+            );
+          }
+        }
+
         .btn-add {
           flex: 1;
-          background: #10b981;
+          background: var(--as-primary-light);
           color: white;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .btn-add {
+            background: var(--as-primary-dark);
+            color: #111827;
+          }
+        }
+
         .btn-add:hover:not(:disabled) {
-          background: #059669;
+          filter: brightness(0.9);
         }
 
         .btn-sign-out-all {
@@ -561,12 +720,25 @@ export function AccountSwitcher({
           color: #6b7280;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .loading-state {
+            color: #9ca3af;
+          }
+        }
+
         .error-state {
           padding: 16px;
           background: #fee2e2;
           border: 1px solid #fecaca;
-          border-radius: 4px;
+          border-radius: calc(var(--as-radius, 8px) / 2);
           margin: 16px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .error-state {
+            background: #450a0a;
+            border-color: #7f1d1d;
+          }
         }
 
         .error-title {
@@ -575,10 +747,22 @@ export function AccountSwitcher({
           margin: 0 0 4px;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .error-title {
+            color: #fca5a5;
+          }
+        }
+
         .error-message {
           font-size: 14px;
           color: #dc2626;
           margin: 0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .error-message {
+            color: #f87171;
+          }
         }
 
         .empty-state {
@@ -587,11 +771,23 @@ export function AccountSwitcher({
           color: #6b7280;
         }
 
+        @media (prefers-color-scheme: dark) {
+          .empty-state {
+            color: #9ca3af;
+          }
+        }
+
         .empty-state-title {
           font-size: 16px;
           font-weight: 600;
           margin: 0 0 8px;
           color: #111827;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .empty-state-title {
+            color: #f9fafb;
+          }
         }
 
         .empty-state-message {

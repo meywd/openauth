@@ -5,9 +5,68 @@
  * These types match the response structures from:
  * - /packages/openauth/src/session/types.ts
  * - /packages/openauth/src/session/routes.ts
+ * - /packages/openauth/src/ui/theme.ts
  *
  * @packageDocumentation
  */
+
+// ============================================
+// THEME TYPES (matching OpenAuth theme system)
+// ============================================
+
+/**
+ * Color scheme for light/dark mode support
+ */
+export interface ColorScheme {
+  light: string
+  dark: string
+}
+
+/**
+ * Theme configuration matching OpenAuth's theme system.
+ *
+ * @see /packages/openauth/src/ui/theme.ts
+ */
+export interface Theme {
+  /** App title */
+  title?: string
+  /** Favicon URL */
+  favicon?: string
+  /** Border radius: none, sm, md, lg, full */
+  radius?: "none" | "sm" | "md" | "lg" | "full"
+  /** Primary color (string or light/dark) */
+  primary: string | ColorScheme
+  /** Background color (string or light/dark) */
+  background?: string | ColorScheme
+  /** Logo URL (string or light/dark) */
+  logo?: string | ColorScheme
+  /** Font settings */
+  font?: {
+    family?: string
+    scale?: string
+  }
+  /** Custom CSS */
+  css?: string
+}
+
+/**
+ * Default theme matching THEME_OPENAUTH
+ */
+export const DEFAULT_THEME: Theme = {
+  title: "OpenAuth",
+  radius: "md",
+  primary: {
+    light: "#3b82f6",
+    dark: "#60a5fa",
+  },
+  background: {
+    light: "#ffffff",
+    dark: "#111827",
+  },
+  font: {
+    family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  },
+}
 
 /**
  * Account information returned from the session API
@@ -162,6 +221,24 @@ export interface AccountSwitcherProps {
    * @example "/authorize" - Will redirect here with prompt=login
    */
   authorizeUrl?: string
+
+  /**
+   * Theme configuration for styling the component.
+   *
+   * Supports the same theme format as OpenAuth's server-side components.
+   * If not provided, uses DEFAULT_THEME.
+   *
+   * @example
+   * ```tsx
+   * theme={{
+   *   primary: "#ff5e00",
+   *   background: { light: "#fff", dark: "#000" },
+   *   radius: "lg",
+   *   font: { family: "Inter, sans-serif" }
+   * }}
+   * ```
+   */
+  theme?: Theme
 
   /**
    * Callback fired when an account is successfully switched
