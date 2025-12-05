@@ -638,7 +638,9 @@ export async function ensureMigrations(
     try {
       await db.exec(migration.sql)
       await db
-        .prepare("INSERT OR REPLACE INTO _openauth_migrations (name, applied_at) VALUES (?, ?)")
+        .prepare(
+          "INSERT OR REPLACE INTO _openauth_migrations (name, applied_at) VALUES (?, ?)",
+        )
         .bind(migration.name, Date.now())
         .run()
       result.applied.push(migration.name)
@@ -664,8 +666,13 @@ export async function ensureMigrationsOnce(db: D1Database): Promise<void> {
 
   migrationState = "running"
   migrationPromise = ensureMigrations(db)
-    .then(() => { migrationState = "complete" })
-    .catch((e) => { migrationState = "pending"; throw e })
+    .then(() => {
+      migrationState = "complete"
+    })
+    .catch((e) => {
+      migrationState = "pending"
+      throw e
+    })
 
   await migrationPromise
 }
