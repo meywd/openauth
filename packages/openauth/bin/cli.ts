@@ -65,7 +65,9 @@ function migrate(dbName?: string) {
       dbName = config.databaseName
       console.log(`Found database in wrangler.toml: ${dbName}`)
     } else {
-      console.error("Error: No database name provided and couldn't find wrangler.toml")
+      console.error(
+        "Error: No database name provided and couldn't find wrangler.toml",
+      )
       console.error("Usage: openauth migrate <database-name>")
       process.exit(1)
     }
@@ -87,7 +89,7 @@ function migrate(dbName?: string) {
   const result = spawnSync(
     "wrangler",
     ["d1", "migrations", "apply", dbName, "--migrations-dir", migrationsDir],
-    { stdio: "inherit", shell: true }
+    { stdio: "inherit", shell: true },
   )
 
   if (result.status !== 0) {
