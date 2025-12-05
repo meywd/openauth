@@ -1,6 +1,6 @@
 {
   "name": "@al-ummah-now/openauth",
-  "version": "0.4.3",
+  "version": "1.0.6",
   "type": "module",
   "description": "OpenAuth with enterprise features - AlUmmahNow Identity Platform",
   "repository": {

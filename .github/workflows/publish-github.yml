@@ -1,24 +1,61 @@
 name: Publish to GitHub Packages
 
 on:
-  push:
-    tags:
-      - "v*"
+  # Run after other workflows complete on main
+  workflow_run:
+    workflows: ["test", "format"]
+    types:
+      - completed
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'packages/openauth/**'
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version to publish (e.g., 0.4.3)"
-        required: false
+      bump:
+        description: "Version bump type"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 permissions:
-  contents: read
+  contents: write
   packages: write
+  pull-requests: write
 
 jobs:
-  publish:
+  # For PRs: wait for checks to pass first
+  wait-for-checks:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      - name: Wait for checks to pass
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          running-workflow-name: 'wait-for-checks'
+          check-regexp: ^(test|format)$
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [wait-for-checks]
+    if: |
+      always() &&
+      (needs.wait-for-checks.result == 'success' || needs.wait-for-checks.result == 'skipped') &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: oven-sh/setup-bun@v2
 
@@ -34,6 +71,71 @@ jobs:
       - name: Build package
         run: bun run --filter="@openauthjs/openauth" build
 
+      - name: Determine version
+        id: version
+        run: |
+          cd packages/openauth
+
+          # Read current version
+          CURRENT_VERSION=$(node -e "console.log(require('./package.github.json').version)")
+          echo "Current version: $CURRENT_VERSION"
+
+          # Parse version components
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d. -f3 | cut -d- -f1)
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # PR: prerelease version like 1.0.7-pr.5.123
+            PR_NUMBER=${{ github.event.pull_request.number }}
+            RUN_NUMBER=${{ github.run_number }}
+            # Use next patch version for prereleases
+            NEXT_PATCH=$((PATCH + 1))
+            VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}-pr.${PR_NUMBER}.${RUN_NUMBER}"
+            TAG="pr"
+            SHOULD_UPDATE_VERSION="false"
+            echo "Publishing PR prerelease: $VERSION"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual: bump based on input
+            BUMP_TYPE="${{ github.event.inputs.bump }}"
+            case $BUMP_TYPE in
+              major)
+                VERSION="$((MAJOR + 1)).0.0"
+                ;;
+              minor)
+                VERSION="${MAJOR}.$((MINOR + 1)).0"
+                ;;
+              *)
+                VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+                ;;
+            esac
+            TAG="latest"
+            SHOULD_UPDATE_VERSION="true"
+            echo "Publishing manual $BUMP_TYPE bump: $VERSION"
+          else
+            # Push to main after checks pass: auto bump patch
+            VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+            TAG="latest"
+            SHOULD_UPDATE_VERSION="true"
+            echo "Publishing release (auto patch bump): $VERSION"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "should_update=$SHOULD_UPDATE_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version in package.github.json
+        if: steps.version.outputs.should_update == 'true'
+        run: |
+          cd packages/openauth
+          node -e "
+            const fs = require('fs');
+            const pkg = require('./package.github.json');
+            pkg.version = '${{ steps.version.outputs.version }}';
+            fs.writeFileSync('package.github.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "Updated package.github.json to version ${{ steps.version.outputs.version }}"
+
       - name: Prepare GitHub Packages release
         run: |
           cd packages/openauth
@@ -41,15 +143,12 @@ jobs:
           cp package.json package.npm.json
           # Use GitHub Packages config
           cp package.github.json package.json
-          # Update version if provided (using node to avoid npm workspace issues)
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            node -e "const pkg = require('./package.json'); pkg.version = '${{ github.event.inputs.version }}'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');"
-          fi
+          echo "Package version: $(node -e "console.log(require('./package.json').version)")"
 
       - name: Publish to GitHub Packages
         run: |
           cd packages/openauth
-          npm publish
+          npm publish --tag ${{ steps.version.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -60,3 +159,24 @@ jobs:
           if [ -f package.npm.json ]; then
             mv package.npm.json package.json
           fi
+
+      - name: Commit version update
+        if: steps.version.outputs.should_update == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add packages/openauth/package.github.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }} [skip ci]" || echo "No changes to commit"
+          git push
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `📦 Published prerelease to GitHub Packages!\n\n\`\`\`bash\nnpm install @al-ummah-now/openauth@${{ steps.version.outputs.version }}\n\`\`\`\n\nThis is a prerelease version for testing. After merging, a stable version will be published.`
+            })
