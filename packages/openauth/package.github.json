@@ -2,6 +2,9 @@
   "name": "@al-ummah-now/openauth",
   "version": "1.0.6",
   "type": "module",
+  "bin": {
+    "openauth": "./bin/cli.js"
+  },
   "description": "OpenAuth with enterprise features - AlUmmahNow Identity Platform",
   "repository": {
     "type": "git",
@@ -48,5 +51,5 @@
     "aws4fetch": "1.0.20",
     "jose": "5.9.6"
   },
-  "files": ["src", "dist"]
+  "files": ["bin", "src", "dist"]
 }
