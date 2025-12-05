@@ -1,0 +1,166 @@
+---
+title: Migrations
+description: Database setup and CLI for enterprise features.
+---
+
+Enterprise features require a Cloudflare D1 database. The OpenAuth CLI handles migrations automatically.
+
+## CLI Usage
+
+```bash
+# Run migrations (auto-detects database from wrangler.toml)
+npx openauth migrate
+
+# Specify database name
+npx openauth migrate my-auth-db
+
+# Local development
+npx openauth migrate --local
+
+# Combine options
+npx openauth migrate my-auth-db --local
+```
+
+## Build Integration
+
+Add migrations to your build script for automatic setup:
+
+```json title="package.json"
+{
+  "scripts": {
+    "build": "openauth migrate && tsc && wrangler deploy",
+    "dev": "openauth migrate --local && wrangler dev"
+  }
+}
+```
+
+## wrangler.toml Setup
+
+Configure your D1 database in `wrangler.toml`:
+
+```toml title="wrangler.toml"
+name = "my-auth-service"
+main = "src/index.ts"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-auth-db"
+database_id = "your-database-id"
+```
+
+The CLI reads `database_name` from this file when no database is specified.
+
+## Migration Files
+
+The CLI executes these SQL files in order:
+
+| File | Description |
+|------|-------------|
+| `001_oauth_clients.sql` | OAuth client credentials table |
+| `002_add_tenant_support.sql` | Tenant management tables |
+| `003_session_management.sql` | Session storage tables |
+| `004_rbac_schema.sql` | RBAC permissions, roles, assignments |
+
+All migrations use `CREATE TABLE IF NOT EXISTS` for idempotency.
+
+## Manual Migration
+
+If you prefer manual control, execute migrations directly with wrangler:
+
+```bash
+# Local
+wrangler d1 execute my-auth-db --local \
+  --file=./node_modules/@al-ummah-now/openauth/src/migrations/001_oauth_clients.sql
+
+# Remote
+wrangler d1 execute my-auth-db \
+  --file=./node_modules/@al-ummah-now/openauth/src/migrations/001_oauth_clients.sql
+```
+
+## Database Schema Overview
+
+### OAuth Clients
+
+```sql
+CREATE TABLE oauth_clients (
+  client_id TEXT PRIMARY KEY,
+  client_secret_hash TEXT,
+  client_name TEXT NOT NULL,
+  redirect_uris TEXT,      -- JSON array
+  grant_types TEXT,        -- JSON array
+  scopes TEXT,             -- JSON array
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+```
+
+### Tenants
+
+```sql
+CREATE TABLE tenants (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  domain TEXT UNIQUE,
+  branding TEXT,           -- JSON object
+  status TEXT DEFAULT 'active',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+```
+
+### Sessions
+
+```sql
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT,
+  user_id TEXT NOT NULL,
+  data TEXT,               -- Encrypted JSON
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
+
+### RBAC
+
+```sql
+CREATE TABLE rbac_permissions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE rbac_roles (
+  id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  permissions TEXT,        -- JSON array
+  PRIMARY KEY (id, tenant_id)
+);
+
+CREATE TABLE rbac_user_roles (
+  user_id TEXT NOT NULL,
+  role_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  PRIMARY KEY (user_id, role_id, tenant_id)
+);
+```
+
+## Troubleshooting
+
+### "wrangler CLI not found"
+
+Install wrangler globally:
+
+```bash
+npm install -g wrangler
+```
+
+### "No database name provided"
+
+Either specify the database name or ensure your `wrangler.toml` has a `[[d1_databases]]` section with `database_name`.
+
+### Migration errors
+
+Migrations are idempotent - running them multiple times is safe. If you see errors about existing tables, they can usually be ignored.
