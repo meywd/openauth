@@ -451,9 +451,7 @@ export async function runMigrations(
 export async function getAppliedMigrations(db: D1Database): Promise<string[]> {
   try {
     const { results } = await db
-      .prepare(
-        "SELECT name FROM _openauth_migrations ORDER BY applied_at ASC",
-      )
+      .prepare("SELECT name FROM _openauth_migrations ORDER BY applied_at ASC")
       .all<{ name: string }>()
     return (results || []).map((r) => r.name)
   } catch {
