@@ -108,7 +108,9 @@ function migrate(args: string[]) {
     process.exit(1)
   }
 
-  console.log(`Applying ${sqlFiles.length} OpenAuth migrations to ${dbName}${isLocal ? " (local)" : ""}...`)
+  console.log(
+    `Applying ${sqlFiles.length} OpenAuth migrations to ${dbName}${isLocal ? " (local)" : ""}...`,
+  )
 
   // Execute each SQL file
   for (const file of sqlFiles) {
