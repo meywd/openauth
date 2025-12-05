@@ -95,12 +95,12 @@ describe("AccountSwitcher Component", () => {
       // Expected: badge, border, or background color
     })
 
-    test("shows "Add account" button", async () => {
+    test('shows "Add account" button', async () => {
       // Should always show option to add new account (up to max 3)
       // Button should redirect to: /authorize?prompt=login
     })
 
-    test("disables "Add account" when at max accounts (3)", async () => {
+    test('disables "Add account" when at max accounts (3)', async () => {
       // Per spec: max 3 accounts per browser
       // When 3 accounts exist, "Add account" should be disabled
     })
@@ -149,7 +149,7 @@ describe("AccountSwitcher Component", () => {
   })
 
   describe("Sign out all", () => {
-    test("calls sign out API when clicking "Sign out all"", async () => {
+    test('calls sign out API when clicking "Sign out all"', async () => {
       // DELETE /api/session/all
     })
 
