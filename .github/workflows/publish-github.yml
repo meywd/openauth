@@ -124,7 +124,23 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "should_update=$SHOULD_UPDATE_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Update version in package.github.json
+      - name: Prepare GitHub Packages release
+        run: |
+          cd packages/openauth
+          # Backup original package.json
+          cp package.json package.npm.json
+          # Use GitHub Packages config
+          cp package.github.json package.json
+          # Set the computed version for publishing
+          node -e "
+            const fs = require('fs');
+            const pkg = require('./package.json');
+            pkg.version = '${{ steps.version.outputs.version }}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          echo "Package version: $(node -e "console.log(require('./package.json').version)")"
+
+      - name: Update base version in package.github.json
         if: steps.version.outputs.should_update == 'true'
         run: |
           cd packages/openauth
@@ -135,15 +151,6 @@ jobs:
             fs.writeFileSync('package.github.json', JSON.stringify(pkg, null, 2) + '\n');
           "
           echo "Updated package.github.json to version ${{ steps.version.outputs.version }}"
-
-      - name: Prepare GitHub Packages release
-        run: |
-          cd packages/openauth
-          # Backup original package.json
-          cp package.json package.npm.json
-          # Use GitHub Packages config
-          cp package.github.json package.json
-          echo "Package version: $(node -e "console.log(require('./package.json').version)")"
 
       - name: Publish to GitHub Packages
         run: |
