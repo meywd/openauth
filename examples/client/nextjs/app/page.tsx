@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { auth, login, logout } from "./actions"
 import styles from "./page.module.css"
+import { AccountSwitcherDropdown } from "./components/account-switcher-dropdown"
 
 export default async function Home() {
   const subject = await auth()
@@ -8,6 +9,22 @@ export default async function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
+        {/* Account Switcher in top-right when logged in */}
+        {subject && (
+          <div
+            style={{
+              position: "absolute",
+              top: "1rem",
+              right: "1rem",
+            }}
+          >
+            <AccountSwitcherDropdown
+              apiBaseUrl="/api"
+              authorizeUrl="/authorize"
+            />
+          </div>
+        )}
+
         <Image
           className={styles.logo}
           src="/next.svg"
@@ -23,7 +40,8 @@ export default async function Home() {
                 Logged in as <code>{subject.properties.id}</code>.
               </li>
               <li>
-                And then check out <code>app/page.tsx</code>.
+                You have multi-account support! Click the account switcher above
+                to manage accounts.
               </li>
             </>
           ) : (

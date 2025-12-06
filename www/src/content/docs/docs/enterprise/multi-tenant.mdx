@@ -1,0 +1,153 @@
+---
+title: Multi-Tenant
+description: Isolate customers with their own branding, domains, and configurations.
+---
+
+Multi-tenancy allows you to serve multiple organizations from a single OpenAuth deployment while keeping their data and branding isolated.
+
+## Tenant Resolution
+
+Tenants can be resolved from multiple sources. Configure the resolution strategy:
+
+```ts title="issuer.ts"
+createMultiTenantIssuer({
+  tenantResolver: {
+    // Subdomain: acme.auth.example.com → tenant "acme"
+    baseDomain: "auth.example.com",
+
+    // Path prefix: /t/acme/authorize → tenant "acme"
+    pathPrefix: "/t/",
+
+    // Header: X-Tenant-ID: acme
+    headerName: "X-Tenant-ID",
+
+    // Query param: ?tenant=acme
+    queryParam: "tenant",
+  },
+  // ...
+})
+```
+
+Resolution order:
+1. Custom domain (exact match)
+2. Subdomain
+3. Path prefix
+4. Header
+5. Query parameter
+
+## Tenant Configuration
+
+Each tenant has isolated configuration:
+
+```ts
+interface Tenant {
+  id: string
+  name: string
+
+  // Custom domain mapping
+  domain?: string
+
+  // Branding
+  branding?: {
+    logo?: string
+    primaryColor?: string
+    theme?: ThemeConfig
+  }
+
+  // Status
+  status: "active" | "suspended" | "deleted"
+
+  createdAt: number
+  updatedAt: number
+}
+```
+
+## Tenant Service
+
+Use the tenant service to manage tenants:
+
+```ts
+import { D1TenantService } from "@openauthjs/openauth/tenant"
+
+const tenantService = new D1TenantService(env.DB)
+
+// Create tenant
+const tenant = await tenantService.create({
+  id: "acme",
+  name: "Acme Corp",
+  domain: "auth.acme.com",
+  branding: {
+    primaryColor: "#FF5500",
+  },
+})
+
+// Get tenant
+const tenant = await tenantService.get("acme")
+
+// Update tenant
+await tenantService.update("acme", {
+  name: "Acme Corporation",
+})
+
+// List tenants
+const tenants = await tenantService.list({ limit: 10 })
+
+// Delete tenant (soft delete)
+await tenantService.delete("acme")
+```
+
+## Tenant API Routes
+
+The enterprise issuer exposes REST endpoints for tenant management:
+
+```
+GET    /tenants          List tenants
+POST   /tenants          Create tenant
+GET    /tenants/:id      Get tenant
+PUT    /tenants/:id      Update tenant
+DELETE /tenants/:id      Delete tenant
+```
+
+## Tenant-Scoped Storage
+
+Data is automatically isolated per tenant using prefixed keys:
+
+```ts
+import { createTenantStorage } from "@openauthjs/openauth/tenant"
+
+// Wraps your storage with tenant prefixing
+const tenantStorage = createTenantStorage(storage, tenantId)
+
+// Keys are automatically prefixed: "tenant:acme:session:123"
+await tenantStorage.set("session", "123", data)
+```
+
+## Per-Tenant Theming
+
+Tenants can customize the auth UI:
+
+```ts
+createMultiTenantIssuer({
+  // Default theme for all tenants
+  theme: {
+    primary: "#0066FF",
+    background: "#FFFFFF",
+  },
+  // ...
+})
+
+// Per-tenant override via branding.theme
+await tenantService.update("acme", {
+  branding: {
+    theme: {
+      primary: "#FF5500",
+      logo: "https://acme.com/logo.png",
+    },
+  },
+})
+```
+
+Theme resolution order:
+1. Tenant's `branding.theme`
+2. Issuer's `theme` config
+3. Default OpenAuth theme

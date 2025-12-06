@@ -130,6 +130,16 @@ export default defineConfig({
             "docs/storage/cloudflare",
           ],
         },
+        {
+          label: "Enterprise",
+          items: [
+            { label: "Overview", slug: "docs/enterprise" },
+            { label: "Multi-Tenant", slug: "docs/enterprise/multi-tenant" },
+            { label: "Sessions", slug: "docs/enterprise/sessions" },
+            { label: "RBAC", slug: "docs/enterprise/rbac" },
+            { label: "Migrations", slug: "docs/enterprise/migrations" },
+          ],
+        },
       ],
     }),
   ],

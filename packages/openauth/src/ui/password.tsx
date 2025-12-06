@@ -33,6 +33,22 @@ import {
 import { Layout } from "./base.js"
 import "./form.js"
 import { FormAlert } from "./form.js"
+import type { Theme } from "./theme.js"
+
+/**
+ * Extracts theme from request header if available
+ * @internal
+ */
+function getThemeFromRequest(req: Request): Theme | undefined {
+  const themeHeader = req.headers.get("X-OpenAuth-Theme")
+  if (!themeHeader) return undefined
+
+  try {
+    return JSON.parse(themeHeader) as Theme
+  } catch {
+    return undefined
+  }
+}
 
 const DEFAULT_COPY = {
   /**
@@ -162,9 +178,10 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
   return {
     validatePassword: input.validatePassword,
     sendCode: input.sendCode,
-    login: async (_req, form, error): Promise<Response> => {
+    login: async (req, form, error): Promise<Response> => {
+      const theme = getThemeFromRequest(req)
       const jsx = (
-        <Layout>
+        <Layout theme={theme}>
           <form data-component="form" method="post">
             <FormAlert message={error?.type && copy?.[`error_${error.type}`]} />
             <input
@@ -207,7 +224,8 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
         },
       })
     },
-    register: async (_req, state, form, error): Promise<Response> => {
+    register: async (req, state, form, error): Promise<Response> => {
+      const theme = getThemeFromRequest(req)
       const emailError = ["invalid_email", "email_taken"].includes(
         error?.type || "",
       )
@@ -217,7 +235,7 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
         "validation_error",
       ].includes(error?.type || "")
       const jsx = (
-        <Layout>
+        <Layout theme={theme}>
           <form data-component="form" method="post">
             <FormAlert
               message={
@@ -298,14 +316,15 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
         },
       })
     },
-    change: async (_req, state, form, error): Promise<Response> => {
+    change: async (req, state, form, error): Promise<Response> => {
+      const theme = getThemeFromRequest(req)
       const passwordError = [
         "invalid_password",
         "password_mismatch",
         "validation_error",
       ].includes(error?.type || "")
       const jsx = (
-        <Layout>
+        <Layout theme={theme}>
           <form data-component="form" method="post" replace>
             <FormAlert
               message={

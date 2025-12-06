@@ -1,0 +1,171 @@
+---
+title: Sessions
+description: Multi-account browser sessions with account switching.
+---
+
+Enterprise sessions enable users to be logged into multiple accounts simultaneously, similar to Google's multi-account feature.
+
+## How It Works
+
+Sessions are stored in an encrypted browser cookie (`__openauth_session`):
+
+```
+Browser Session
+├── Account 0 (active)
+│   ├── subject: "user"
+│   ├── properties: { userID: "123" }
+│   └── expiresAt: 1234567890
+├── Account 1
+│   ├── subject: "user"
+│   ├── properties: { userID: "456" }
+│   └── expiresAt: 1234567890
+└── Account 2
+    └── ...
+```
+
+- Maximum 3 concurrent accounts per browser
+- Sliding window expiration (refreshed on activity)
+- JWE encrypted with your signing key
+
+## Configuration
+
+```ts title="issuer.ts"
+createMultiTenantIssuer({
+  sessionConfig: {
+    // Cookie name (default: __openauth_session)
+    cookieName: "__openauth_session",
+
+    // Session duration (default: 30 days)
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+
+    // Max accounts per browser (default: 3)
+    maxAccounts: 3,
+
+    // Cookie options
+    cookie: {
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  },
+  // ...
+})
+```
+
+## Session Routes
+
+The enterprise issuer exposes session management endpoints:
+
+```
+GET  /session/check     Check session status
+GET  /session/accounts  List all accounts in session
+POST /session/switch    Switch active account
+POST /session/remove    Remove account from session
+POST /session/logout    Logout current account
+POST /session/clear     Clear entire session
+```
+
+### Check Session
+
+```ts
+const response = await fetch("/session/check", {
+  credentials: "include",
+})
+
+const { authenticated, account, accountCount } = await response.json()
+// {
+//   authenticated: true,
+//   account: { subject: "user", properties: { userID: "123" } },
+//   accountCount: 2
+// }
+```
+
+### List Accounts
+
+```ts
+const response = await fetch("/session/accounts", {
+  credentials: "include",
+})
+
+const { accounts, activeIndex } = await response.json()
+// {
+//   accounts: [
+//     { subject: "user", properties: { userID: "123" } },
+//     { subject: "user", properties: { userID: "456" } }
+//   ],
+//   activeIndex: 0
+// }
+```
+
+### Switch Account
+
+```ts
+await fetch("/session/switch", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ index: 1 }),
+})
+```
+
+### Add Account
+
+To add another account, redirect to authorize with `prompt=login`:
+
+```ts
+const addAccountUrl = `/authorize?${new URLSearchParams({
+  client_id: "your-client",
+  redirect_uri: "https://app.example.com/callback",
+  response_type: "code",
+  prompt: "login", // Forces new login even if session exists
+})}`
+
+window.location.href = addAccountUrl
+```
+
+## OIDC Prompt Parameter
+
+The enterprise issuer fully supports the OIDC `prompt` parameter:
+
+| Value | Behavior |
+|-------|----------|
+| `none` | Silent auth - fail if no session |
+| `login` | Force re-authentication |
+| `consent` | Force consent screen |
+| `select_account` | Show account picker |
+
+```ts
+// Silent authentication (check if logged in)
+const silentAuthUrl = `/authorize?prompt=none&...`
+
+// Force login (add new account)
+const loginUrl = `/authorize?prompt=login&...`
+
+// Account picker
+const selectUrl = `/authorize?prompt=select_account&...`
+```
+
+## Session Service
+
+For advanced use cases, use the session service directly:
+
+```ts
+import { SessionService } from "@openauthjs/openauth/session"
+
+const sessionService = new SessionService(signingKey, config)
+
+// Create session from request
+const session = await sessionService.fromRequest(request)
+
+// Add account to session
+session.addAccount({
+  subject: "user",
+  properties: { userID: "789" },
+})
+
+// Switch active account
+session.switchAccount(1)
+
+// Get cookie header for response
+const cookieHeader = await sessionService.toCookie(session)
+```

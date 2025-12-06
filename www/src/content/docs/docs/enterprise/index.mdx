@@ -1,0 +1,70 @@
+---
+title: Enterprise Features
+description: Multi-tenant SSO, session management, and RBAC for enterprise applications.
+---
+
+OpenAuth Enterprise extends the core authentication system with features needed for B2B SaaS and enterprise applications:
+
+- **Multi-Tenant** - Isolate customers with their own branding, domains, and configurations
+- **Sessions** - Multi-account browser sessions with up to 3 concurrent accounts
+- **RBAC** - Role-based access control with tenant-scoped permissions
+- **OIDC Prompt** - Full support for OIDC prompt parameter (`none`, `login`, `consent`, `select_account`)
+
+## Quick Start
+
+```ts title="issuer.ts"
+import { createMultiTenantIssuer } from "@openauthjs/openauth/enterprise"
+
+export default {
+  fetch: createMultiTenantIssuer({
+    storage: env.KV,
+    clientDb: env.DB,
+    subjects,
+    providers: {
+      google: GoogleProvider({ ... }),
+    },
+    async success(ctx, value) {
+      return ctx.subject("user", { userID: "..." })
+    },
+  }).fetch
+}
+```
+
+## Database Setup
+
+Enterprise features require a D1 database. Run migrations using the CLI:
+
+```bash
+# Install the package
+npm install @al-ummah-now/openauth
+
+# Run migrations (auto-detects database from wrangler.toml)
+npx openauth migrate
+
+# Or specify database and use local D1
+npx openauth migrate my-auth-db --local
+```
+
+Add to your build script for automatic migrations:
+
+```json title="package.json"
+{
+  "scripts": {
+    "build": "openauth migrate && tsc"
+  }
+}
+```
+
+## Architecture
+
+The enterprise issuer wraps the base OpenAuth issuer and adds:
+
+1. **Tenant Resolution** - Resolve tenant from domain, subdomain, path, or header
+2. **Theme Injection** - Per-tenant branding via middleware
+3. **Session Management** - Encrypted browser sessions with account switching
+4. **RBAC Middleware** - Inject permissions into access tokens
+5. **Enhanced /authorize** - OIDC prompt parameter handling
+
+```
+Request → Tenant Resolution → Theme → Session → RBAC → Base Issuer → Response
+```

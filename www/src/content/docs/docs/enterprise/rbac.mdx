@@ -1,0 +1,192 @@
+---
+title: RBAC
+description: Role-based access control with tenant-scoped permissions.
+---
+
+Role-Based Access Control (RBAC) lets you define permissions that are automatically included in access tokens.
+
+## Concepts
+
+- **Permission** - An action that can be performed (e.g., `posts:read`, `users:delete`)
+- **Role** - A collection of permissions assigned to users within a tenant
+- **Assignment** - Links a user to a role within a specific tenant
+
+```
+User "alice" in Tenant "acme"
+    └── Role "editor"
+        ├── posts:read
+        ├── posts:write
+        └── comments:moderate
+```
+
+## Configuration
+
+```ts title="issuer.ts"
+import { D1RbacAdapter } from "@openauthjs/openauth/rbac"
+
+createMultiTenantIssuer({
+  rbacAdapter: new D1RbacAdapter(env.DB),
+  // ...
+})
+```
+
+## Managing Permissions
+
+Permissions are application-scoped (shared across all tenants):
+
+```ts
+import { RbacService } from "@openauthjs/openauth/rbac"
+
+const rbac = new RbacService(adapter)
+
+// Create permissions
+await rbac.createPermission({
+  id: "posts:read",
+  name: "Read Posts",
+  description: "View blog posts",
+})
+
+await rbac.createPermission({
+  id: "posts:write",
+  name: "Write Posts",
+  description: "Create and edit posts",
+})
+
+// List permissions
+const permissions = await rbac.listPermissions()
+```
+
+## Managing Roles
+
+Roles are tenant-scoped:
+
+```ts
+// Create role for a tenant
+await rbac.createRole({
+  id: "editor",
+  tenantId: "acme",
+  name: "Editor",
+  description: "Can manage content",
+  permissions: ["posts:read", "posts:write", "comments:moderate"],
+})
+
+// List roles for a tenant
+const roles = await rbac.listRoles("acme")
+
+// Update role permissions
+await rbac.updateRole("editor", "acme", {
+  permissions: ["posts:read", "posts:write"],
+})
+```
+
+## Assigning Roles
+
+Assign roles to users within a tenant:
+
+```ts
+// Assign role to user
+await rbac.assignRole({
+  userId: "user_123",
+  roleId: "editor",
+  tenantId: "acme",
+})
+
+// List user's roles in a tenant
+const roles = await rbac.getUserRoles("user_123", "acme")
+
+// Remove role assignment
+await rbac.removeRole("user_123", "editor", "acme")
+```
+
+## Token Enrichment
+
+Permissions are automatically added to access tokens:
+
+```ts
+// Access token payload
+{
+  "sub": "user_123",
+  "iss": "https://auth.example.com",
+  "permissions": ["posts:read", "posts:write", "comments:moderate"],
+  "roles": ["editor"],
+  "tenant": "acme"
+}
+```
+
+## Checking Permissions
+
+On your backend, verify permissions from the token:
+
+```ts
+import { client } from "./auth-client"
+
+const verified = await client.verify(subjects, accessToken)
+
+// Check single permission
+if (verified.permissions?.includes("posts:write")) {
+  // Allow write
+}
+
+// Check multiple permissions
+const required = ["posts:read", "posts:write"]
+const hasAll = required.every(p => verified.permissions?.includes(p))
+```
+
+## RBAC Service API
+
+```ts
+interface RbacService {
+  // Permissions (application-scoped)
+  createPermission(permission: Permission): Promise<void>
+  getPermission(id: string): Promise<Permission | null>
+  listPermissions(): Promise<Permission[]>
+  deletePermission(id: string): Promise<void>
+
+  // Roles (tenant-scoped)
+  createRole(role: Role): Promise<void>
+  getRole(id: string, tenantId: string): Promise<Role | null>
+  listRoles(tenantId: string): Promise<Role[]>
+  updateRole(id: string, tenantId: string, updates: Partial<Role>): Promise<void>
+  deleteRole(id: string, tenantId: string): Promise<void>
+
+  // Assignments
+  assignRole(assignment: RoleAssignment): Promise<void>
+  removeRole(userId: string, roleId: string, tenantId: string): Promise<void>
+  getUserRoles(userId: string, tenantId: string): Promise<Role[]>
+  getUserPermissions(userId: string, tenantId: string): Promise<string[]>
+}
+```
+
+## Database Schema
+
+RBAC uses these D1 tables (created by migrations):
+
+```sql
+-- Application-scoped permissions
+CREATE TABLE rbac_permissions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER NOT NULL
+);
+
+-- Tenant-scoped roles
+CREATE TABLE rbac_roles (
+  id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  permissions TEXT, -- JSON array
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (id, tenant_id)
+);
+
+-- User role assignments
+CREATE TABLE rbac_user_roles (
+  user_id TEXT NOT NULL,
+  role_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  assigned_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, role_id, tenant_id)
+);
+```
