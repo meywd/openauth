@@ -8,7 +8,7 @@ Enterprise features require a Cloudflare D1 database. The OpenAuth CLI handles m
 ## CLI Usage
 
 ```bash
-# Run migrations (auto-detects database from wrangler.toml)
+# Run migrations (auto-detects database from wrangler config)
 npx openauth migrate
 
 # Specify database name
@@ -34,9 +34,15 @@ Add migrations to your build script for automatic setup:
 }
 ```
 
-## wrangler.toml Setup
+## Wrangler Configuration
 
-Configure your D1 database in `wrangler.toml`:
+The CLI supports multiple configuration formats:
+
+- `wrangler.toml` (checked first)
+- `wrangler.json`
+- `wrangler.jsonc` (JSON with comments)
+
+### wrangler.toml
 
 ```toml title="wrangler.toml"
 name = "my-auth-service"
@@ -48,7 +54,23 @@ database_name = "my-auth-db"
 database_id = "your-database-id"
 ```
 
-The CLI reads `database_name` from this file when no database is specified.
+### wrangler.json / wrangler.jsonc
+
+```json title="wrangler.json"
+{
+  "name": "my-auth-service",
+  "main": "src/index.ts",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-auth-db",
+      "database_id": "your-database-id"
+    }
+  ]
+}
+```
+
+The CLI reads `database_name` from the first D1 database entry when no database is specified.
 
 ## Migration Files
 
@@ -159,7 +181,7 @@ npm install -g wrangler
 
 ### "No database name provided"
 
-Either specify the database name or ensure your `wrangler.toml` has a `[[d1_databases]]` section with `database_name`.
+Either specify the database name or ensure your wrangler config has a D1 database entry with `database_name`. Supported config files: `wrangler.toml`, `wrangler.json`, `wrangler.jsonc`.
 
 ### Migration errors
 

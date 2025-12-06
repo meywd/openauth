@@ -7,7 +7,8 @@
  * Usage:
  *   npx openauth migrate [database-name] [--local]
  *
- * If database-name is not provided, reads from wrangler.toml
+ * If database-name is not provided, reads from wrangler config.
+ * Supports: wrangler.toml, wrangler.json, wrangler.jsonc
  */
 
 import { execSync, spawnSync } from "child_process"
@@ -21,22 +22,81 @@ const __dirname = dirname(__filename)
 // Migrations are in src/migrations relative to package root
 const migrationsDir = join(__dirname, "..", "src", "migrations")
 
-function parseWranglerToml(): { databaseName: string } | null {
-  const wranglerPath = join(process.cwd(), "wrangler.toml")
+/**
+ * Strip JSON comments (// and /* */) for JSONC support
+ */
+function stripJsonComments(content: string): string {
+  // Remove single-line comments
+  content = content.replace(/\/\/.*$/gm, "")
+  // Remove multi-line comments
+  content = content.replace(/\/\*[\s\S]*?\*\//g, "")
+  return content
+}
 
-  if (!existsSync(wranglerPath)) {
-    return null
+/**
+ * Parse wrangler config to get database name
+ * Supports: wrangler.toml, wrangler.json, wrangler.jsonc
+ */
+function parseWranglerConfig(): { databaseName: string; configFile: string } | null {
+  const cwd = process.cwd()
+
+  // Try wrangler.toml first
+  const tomlPath = join(cwd, "wrangler.toml")
+  if (existsSync(tomlPath)) {
+    const content = readFileSync(tomlPath, "utf-8")
+    // Simple TOML parsing for d1_databases
+    // Looking for: database_name = "xxx"
+    const match = content.match(/database_name\s*=\s*"([^"]+)"/)
+    if (match) {
+      return { databaseName: match[1], configFile: "wrangler.toml" }
+    }
   }
 
-  const content = readFileSync(wranglerPath, "utf-8")
-
-  // Simple TOML parsing for d1_databases
-  // Looking for: database_name = "xxx"
-  const match = content.match(/database_name\s*=\s*"([^"]+)"/)
-  if (match) {
-    return { databaseName: match[1] }
+  // Try wrangler.json
+  const jsonPath = join(cwd, "wrangler.json")
+  if (existsSync(jsonPath)) {
+    try {
+      const content = readFileSync(jsonPath, "utf-8")
+      const config = JSON.parse(content)
+      const dbName = extractDbNameFromJson(config)
+      if (dbName) {
+        return { databaseName: dbName, configFile: "wrangler.json" }
+      }
+    } catch {
+      // Invalid JSON, continue to next option
+    }
   }
 
+  // Try wrangler.jsonc (JSON with comments)
+  const jsoncPath = join(cwd, "wrangler.jsonc")
+  if (existsSync(jsoncPath)) {
+    try {
+      const content = readFileSync(jsoncPath, "utf-8")
+      const stripped = stripJsonComments(content)
+      const config = JSON.parse(stripped)
+      const dbName = extractDbNameFromJson(config)
+      if (dbName) {
+        return { databaseName: dbName, configFile: "wrangler.jsonc" }
+      }
+    } catch {
+      // Invalid JSONC, continue
+    }
+  }
+
+  return null
+}
+
+/**
+ * Extract database name from parsed JSON config
+ */
+function extractDbNameFromJson(config: any): string | null {
+  // Check d1_databases array
+  if (Array.isArray(config.d1_databases) && config.d1_databases.length > 0) {
+    const db = config.d1_databases[0]
+    if (db.database_name) {
+      return db.database_name
+    }
+  }
   return null
 }
 
@@ -52,7 +112,7 @@ Options:
   --local    Apply to local D1 database (for development)
 
 Examples:
-  openauth migrate                    # Auto-detect from wrangler.toml, remote
+  openauth migrate                    # Auto-detect from wrangler config, remote
   openauth migrate --local            # Auto-detect, local database
   openauth migrate my-auth-db         # Specify database name
   openauth migrate my-auth-db --local # Specify database, local
@@ -74,16 +134,17 @@ function migrate(args: string[]) {
     }
   }
 
-  // Try to get database name from wrangler.toml if not provided
+  // Try to get database name from wrangler config if not provided
   if (!dbName) {
-    const config = parseWranglerToml()
+    const config = parseWranglerConfig()
     if (config) {
       dbName = config.databaseName
-      console.log(`Found database in wrangler.toml: ${dbName}`)
+      console.log(`Found database in ${config.configFile}: ${dbName}`)
     } else {
       console.error(
-        "Error: No database name provided and couldn't find wrangler.toml",
+        "Error: No database name provided and couldn't find wrangler config",
       )
+      console.error("Supported: wrangler.toml, wrangler.json, wrangler.jsonc")
       console.error("Usage: openauth migrate <database-name>")
       process.exit(1)
     }
