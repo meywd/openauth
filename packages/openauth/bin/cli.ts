@@ -37,7 +37,10 @@ function stripJsonComments(content: string): string {
  * Parse wrangler config to get database name
  * Supports: wrangler.toml, wrangler.json, wrangler.jsonc
  */
-function parseWranglerConfig(): { databaseName: string; configFile: string } | null {
+function parseWranglerConfig(): {
+  databaseName: string
+  configFile: string
+} | null {
   const cwd = process.cwd()
 
   // Try wrangler.toml first
