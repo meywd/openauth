@@ -133,30 +133,33 @@ Usage:
 
 Options:
   --local              Apply to local D1 database (for development)
+  --remote             Apply to remote D1 database (production)
   --config, -c <file>  Use a specific wrangler config file
 
 Examples:
-  openauth migrate                       # Auto-detect from wrangler config, remote
-  openauth migrate --local               # Auto-detect, local database
-  openauth migrate my-auth-db            # Specify database name
-  openauth migrate my-auth-db --local    # Specify database, local
-  openauth migrate -c wrangler.qa.json   # Use QA config file
-  openauth migrate --config wrangler.staging.toml --local
+  openauth migrate                       # Auto-detect from wrangler config
+  openauth migrate --local               # Local database
+  openauth migrate --remote              # Remote database (production)
+  openauth migrate my-auth-db --remote   # Specify database, remote
+  openauth migrate -c wrangler.qa.json --remote
 
 The migrate command executes OpenAuth SQL migrations against your D1 database.
 `)
 }
 
 function migrate(args: string[]) {
-  // Parse args for database name, --local flag, and --config option
+  // Parse args for database name, --local/--remote flags, and --config option
   let dbName: string | undefined
   let isLocal = false
+  let isRemote = false
   let configFile: string | undefined
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
     if (arg === "--local") {
       isLocal = true
+    } else if (arg === "--remote") {
+      isRemote = true
     } else if (arg === "--config" || arg === "-c") {
       configFile = args[++i]
       if (!configFile) {
@@ -166,6 +169,12 @@ function migrate(args: string[]) {
     } else if (!arg.startsWith("-")) {
       dbName = arg
     }
+  }
+
+  // Validate mutually exclusive flags
+  if (isLocal && isRemote) {
+    console.error("Error: Cannot specify both --local and --remote")
+    process.exit(1)
   }
 
   // Try to get database name from wrangler config if not provided
@@ -219,6 +228,9 @@ function migrate(args: string[]) {
     const wranglerArgs = ["d1", "execute", dbName, "--file", filePath]
     if (isLocal) {
       wranglerArgs.push("--local")
+    }
+    if (isRemote) {
+      wranglerArgs.push("--remote")
     }
     if (configFile) {
       wranglerArgs.push("--config", configFile)
