@@ -23,7 +23,7 @@ const __dirname = dirname(__filename)
 const migrationsDir = join(__dirname, "..", "src", "migrations")
 
 /**
- * Strip JSON comments (// and /* */) for JSONC support
+ * Strip JSON comments (single-line and multi-line) for JSONC support
  */
 function stripJsonComments(content: string): string {
   // Remove single-line comments
