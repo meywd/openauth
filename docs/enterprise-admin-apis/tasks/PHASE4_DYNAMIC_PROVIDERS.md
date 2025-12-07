@@ -59,11 +59,29 @@ CREATE INDEX IF NOT EXISTS idx_identity_providers_type
  */
 
 export type ProviderType =
-  | "google" | "github" | "facebook" | "twitter" | "apple"
-  | "microsoft" | "linkedin" | "discord" | "slack" | "spotify" | "twitch"
-  | "oidc" | "password" | "magic_link" | "otp" | "saml" | "custom_oauth2"
+  | "google"
+  | "github"
+  | "facebook"
+  | "twitter"
+  | "apple"
+  | "microsoft"
+  | "linkedin"
+  | "discord"
+  | "slack"
+  | "spotify"
+  | "twitch"
+  | "oidc"
+  | "password"
+  | "magic_link"
+  | "otp"
+  | "saml"
+  | "custom_oauth2"
 
-export type ProviderCategory = "social" | "enterprise" | "passwordless" | "password"
+export type ProviderCategory =
+  | "social"
+  | "enterprise"
+  | "passwordless"
+  | "password"
 
 export interface IdentityProviderRecord {
   id: string
@@ -233,7 +251,7 @@ export class EncryptionService {
       this.keyBytes,
       { name: "AES-GCM", length: 256 },
       false,
-      ["encrypt", "decrypt"]
+      ["encrypt", "decrypt"],
     )
   }
 
@@ -246,7 +264,7 @@ export class EncryptionService {
     const ciphertextWithTag = await crypto.subtle.encrypt(
       { name: "AES-GCM", iv, tagLength: 128 },
       key,
-      plaintextBytes
+      plaintextBytes,
     )
 
     const ciphertextBytes = new Uint8Array(ciphertextWithTag)
@@ -274,7 +292,7 @@ export class EncryptionService {
       const plaintextBytes = await crypto.subtle.decrypt(
         { name: "AES-GCM", iv, tagLength: 128 },
         key,
-        combined
+        combined,
       )
       return new TextDecoder().decode(plaintextBytes)
     } catch {
@@ -282,7 +300,9 @@ export class EncryptionService {
     }
   }
 
-  async encryptForDB(plaintext: string): Promise<{ ciphertext: string; iv: string }> {
+  async encryptForDB(
+    plaintext: string,
+  ): Promise<{ ciphertext: string; iv: string }> {
     const encrypted = await this.encrypt(plaintext)
     return {
       ciphertext: encrypted.ciphertext + "." + encrypted.tag,
@@ -426,7 +446,10 @@ export class TTLCache<T> {
   }
 }
 
-export function providerCacheKey(tenantId: string, providerName: string): string {
+export function providerCacheKey(
+  tenantId: string,
+  providerName: string,
+): string {
   return `provider:${tenantId}:${providerName}`
 }
 
@@ -442,11 +465,14 @@ export function tenantCacheKeyPrefix(tenantId: string): string {
  * Default OAuth2 endpoints for known providers
  */
 
-export const PROVIDER_DEFAULTS: Record<string, {
-  endpoints: { authorization: string; token: string; jwks?: string }
-  defaultScopes: string[]
-  pkce?: boolean
-}> = {
+export const PROVIDER_DEFAULTS: Record<
+  string,
+  {
+    endpoints: { authorization: string; token: string; jwks?: string }
+    defaultScopes: string[]
+    pkce?: boolean
+  }
+> = {
   google: {
     endpoints: {
       authorization: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -487,7 +513,8 @@ export const PROVIDER_DEFAULTS: Record<string, {
   },
   microsoft: {
     endpoints: {
-      authorization: "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
+      authorization:
+        "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
       token: "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
     },
     defaultScopes: ["openid", "email", "profile"],
@@ -566,7 +593,11 @@ export function createProviderFromConfig(provider: IdentityProvider): any {
   }
 
   const defaults = PROVIDER_DEFAULTS[provider.type]
-  if (!defaults && provider.type !== "oidc" && provider.type !== "custom_oauth2") {
+  if (
+    !defaults &&
+    provider.type !== "oidc" &&
+    provider.type !== "custom_oauth2"
+  ) {
     throw new Error(`Unsupported provider type: ${provider.type}`)
   }
 
@@ -584,7 +615,7 @@ export function createProviderFromConfig(provider: IdentityProvider): any {
 
 export function validateProviderConfig(
   type: ProviderType,
-  config: Partial<ProviderConfig>
+  config: Partial<ProviderConfig>,
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = []
 
@@ -607,9 +638,14 @@ export function validateProviderConfig(
       const msConfig = config as any
       if (msConfig.tenant) {
         const validTenants = ["common", "organizations", "consumers"]
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(msConfig.tenant)
+        const isUUID =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            msConfig.tenant,
+          )
         if (!validTenants.includes(msConfig.tenant) && !isUUID) {
-          errors.push("Microsoft tenant must be 'common', 'organizations', 'consumers', or a valid tenant ID")
+          errors.push(
+            "Microsoft tenant must be 'common', 'organizations', 'consumers', or a valid tenant ID",
+          )
         }
       }
       break
@@ -665,7 +701,10 @@ export class DynamicProviderLoader {
     this.cacheTTL = options.cacheTTL || 60_000
   }
 
-  async getProvider(tenantId: string, providerName: string): Promise<LoadedProvider | null> {
+  async getProvider(
+    tenantId: string,
+    providerName: string,
+  ): Promise<LoadedProvider | null> {
     const cacheKey = providerCacheKey(tenantId, providerName)
     const cached = this.cache.get(cacheKey)
     if (cached) return cached
@@ -701,7 +740,9 @@ export class DynamicProviderLoader {
       providers.push(loaded)
     }
 
-    return providers.sort((a, b) => a.config.displayOrder - b.config.displayOrder)
+    return providers.sort(
+      (a, b) => a.config.displayOrder - b.config.displayOrder,
+    )
   }
 
   invalidateTenant(tenantId: string): void {
@@ -712,14 +753,19 @@ export class DynamicProviderLoader {
     this.cache.delete(providerCacheKey(tenantId, providerName))
   }
 
-  private async loadProviderRecord(tenantId: string, name: string): Promise<IdentityProviderRecord | null> {
+  private async loadProviderRecord(
+    tenantId: string,
+    name: string,
+  ): Promise<IdentityProviderRecord | null> {
     const stmt = this.db.prepare(`
       SELECT * FROM identity_providers WHERE tenant_id = ? AND name = ?
     `)
     return stmt.bind(tenantId, name).first<IdentityProviderRecord>()
   }
 
-  private async loadProviderRecords(tenantId: string): Promise<IdentityProviderRecord[]> {
+  private async loadProviderRecords(
+    tenantId: string,
+  ): Promise<IdentityProviderRecord[]> {
     const stmt = this.db.prepare(`
       SELECT * FROM identity_providers WHERE tenant_id = ? ORDER BY display_order ASC, name ASC
     `)
@@ -727,17 +773,24 @@ export class DynamicProviderLoader {
     return result.results || []
   }
 
-  private async parseRecord(record: IdentityProviderRecord): Promise<IdentityProvider> {
+  private async parseRecord(
+    record: IdentityProviderRecord,
+  ): Promise<IdentityProvider> {
     let clientSecret: string | null = null
     if (record.client_secret_encrypted && record.client_secret_iv) {
       try {
         clientSecret = await this.encryption.decryptFromDB(
           record.client_secret_encrypted,
-          record.client_secret_iv
+          record.client_secret_iv,
         )
       } catch (error) {
-        console.error(`Failed to decrypt secret for provider ${record.id}:`, error)
-        throw new Error(`Failed to decrypt client secret for provider: ${record.name}`)
+        console.error(
+          `Failed to decrypt secret for provider ${record.id}:`,
+          error,
+        )
+        throw new Error(
+          `Failed to decrypt client secret for provider: ${record.name}`,
+        )
       }
     }
 
@@ -769,7 +822,9 @@ export class DynamicProviderLoader {
   }
 }
 
-export function createDynamicProviderLoader(options: ProviderLoaderOptions): DynamicProviderLoader {
+export function createDynamicProviderLoader(
+  options: ProviderLoaderOptions,
+): DynamicProviderLoader {
   return new DynamicProviderLoader(options)
 }
 ```
@@ -829,7 +884,10 @@ export function createProviderApi(options: {
     const result = await stmt.bind(tenantId).all<IdentityProviderRecord>()
     const providers = (result.results || []).map(toResponse)
 
-    return c.json({ providers, total: providers.length } as ProviderListResponse)
+    return c.json({
+      providers,
+      total: providers.length,
+    } as ProviderListResponse)
   })
 
   // POST / - Create provider
@@ -840,23 +898,47 @@ export function createProviderApi(options: {
     const body = await c.req.json<CreateProviderRequest>()
 
     if (!body.type || !body.name || !body.displayName) {
-      return c.json({ error: "Missing required fields: type, name, displayName" }, 400)
+      return c.json(
+        { error: "Missing required fields: type, name, displayName" },
+        400,
+      )
     }
 
-    if (!PROVIDER_DEFAULTS[body.type] && !["oidc", "custom_oauth2", "password", "magic_link", "otp", "saml"].includes(body.type)) {
+    if (
+      !PROVIDER_DEFAULTS[body.type] &&
+      ![
+        "oidc",
+        "custom_oauth2",
+        "password",
+        "magic_link",
+        "otp",
+        "saml",
+      ].includes(body.type)
+    ) {
       return c.json({ error: `Invalid provider type: ${body.type}` }, 400)
     }
 
     if (!/^[a-z0-9_-]+$/.test(body.name)) {
-      return c.json({ error: "Provider name must be lowercase alphanumeric with hyphens/underscores" }, 400)
+      return c.json(
+        {
+          error:
+            "Provider name must be lowercase alphanumeric with hyphens/underscores",
+        },
+        400,
+      )
     }
 
     const existing = await options.database
-      .prepare("SELECT id FROM identity_providers WHERE tenant_id = ? AND name = ?")
+      .prepare(
+        "SELECT id FROM identity_providers WHERE tenant_id = ? AND name = ?",
+      )
       .bind(tenantId, body.name)
       .first()
     if (existing) {
-      return c.json({ error: `Provider with name "${body.name}" already exists` }, 409)
+      return c.json(
+        { error: `Provider with name "${body.name}" already exists` },
+        409,
+      )
     }
 
     const defaultConfig = getDefaultConfig(body.type as ProviderType)
@@ -864,7 +946,10 @@ export function createProviderApi(options: {
 
     const validation = validateProviderConfig(body.type as ProviderType, config)
     if (!validation.valid) {
-      return c.json({ error: "Invalid configuration", details: validation.errors }, 400)
+      return c.json(
+        { error: "Invalid configuration", details: validation.errors },
+        400,
+      )
     }
 
     let encryptedSecret: string | null = null
@@ -878,18 +963,32 @@ export function createProviderApi(options: {
     const id = crypto.randomUUID()
     const now = Date.now()
 
-    await options.database.prepare(`
+    await options.database
+      .prepare(
+        `
       INSERT INTO identity_providers (
         id, tenant_id, type, name, display_name,
         client_id, client_secret_encrypted, client_secret_iv,
         config, enabled, display_order, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id, tenantId, body.type, body.name, body.displayName,
-      body.clientId || null, encryptedSecret, secretIv,
-      JSON.stringify(config), body.enabled !== false ? 1 : 0,
-      body.displayOrder || 0, now, now
-    ).run()
+    `,
+      )
+      .bind(
+        id,
+        tenantId,
+        body.type,
+        body.name,
+        body.displayName,
+        body.clientId || null,
+        encryptedSecret,
+        secretIv,
+        JSON.stringify(config),
+        body.enabled !== false ? 1 : 0,
+        body.displayOrder || 0,
+        now,
+        now,
+      )
+      .run()
 
     options.onProviderChange?.(tenantId, body.name)
 
@@ -908,7 +1007,9 @@ export function createProviderApi(options: {
 
     const id = c.req.param("id")
     const record = await options.database
-      .prepare("SELECT * FROM identity_providers WHERE id = ? AND tenant_id = ?")
+      .prepare(
+        "SELECT * FROM identity_providers WHERE id = ? AND tenant_id = ?",
+      )
       .bind(id, tenantId)
       .first<IdentityProviderRecord>()
 
@@ -925,7 +1026,9 @@ export function createProviderApi(options: {
     const body = await c.req.json<UpdateProviderRequest>()
 
     const existing = await options.database
-      .prepare("SELECT * FROM identity_providers WHERE id = ? AND tenant_id = ?")
+      .prepare(
+        "SELECT * FROM identity_providers WHERE id = ? AND tenant_id = ?",
+      )
       .bind(id, tenantId)
       .first<IdentityProviderRecord>()
 
@@ -954,9 +1057,15 @@ export function createProviderApi(options: {
     if (body.config !== undefined) {
       const existingConfig = JSON.parse(existing.config || "{}")
       const newConfig = { ...existingConfig, ...body.config }
-      const validation = validateProviderConfig(existing.type as ProviderType, newConfig)
+      const validation = validateProviderConfig(
+        existing.type as ProviderType,
+        newConfig,
+      )
       if (!validation.valid) {
-        return c.json({ error: "Invalid configuration", details: validation.errors }, 400)
+        return c.json(
+          { error: "Invalid configuration", details: validation.errors },
+          400,
+        )
       }
       updates.push("config = ?")
       values.push(JSON.stringify(newConfig))
@@ -977,9 +1086,14 @@ export function createProviderApi(options: {
     updates.push("updated_at = ?")
     values.push(Date.now(), id, tenantId)
 
-    await options.database.prepare(`
+    await options.database
+      .prepare(
+        `
       UPDATE identity_providers SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?
-    `).bind(...values).run()
+    `,
+      )
+      .bind(...values)
+      .run()
 
     options.onProviderChange?.(tenantId, existing.name)
 
@@ -998,7 +1112,9 @@ export function createProviderApi(options: {
 
     const id = c.req.param("id")
     const existing = await options.database
-      .prepare("SELECT name FROM identity_providers WHERE id = ? AND tenant_id = ?")
+      .prepare(
+        "SELECT name FROM identity_providers WHERE id = ? AND tenant_id = ?",
+      )
       .bind(id, tenantId)
       .first<{ name: string }>()
 
@@ -1024,8 +1140,20 @@ export function createProviderApi(options: {
     }))
 
     types.push(
-      { type: "oidc", category: "enterprise", displayName: "OpenID Connect", defaultScopes: [], requiresClientSecret: false },
-      { type: "custom_oauth2", category: "enterprise", displayName: "Custom OAuth2", defaultScopes: [], requiresClientSecret: true }
+      {
+        type: "oidc",
+        category: "enterprise",
+        displayName: "OpenID Connect",
+        defaultScopes: [],
+        requiresClientSecret: false,
+      },
+      {
+        type: "custom_oauth2",
+        category: "enterprise",
+        displayName: "Custom OAuth2",
+        defaultScopes: [],
+        requiresClientSecret: true,
+      },
     )
 
     return c.json({ types })
@@ -1039,10 +1167,18 @@ export function createProviderApi(options: {
 
 ```typescript
 export * from "./types.js"
-export { EncryptionService, generateEncryptionKey, hexToBytes } from "./encryption.js"
+export {
+  EncryptionService,
+  generateEncryptionKey,
+  hexToBytes,
+} from "./encryption.js"
 export { TTLCache, providerCacheKey, tenantCacheKeyPrefix } from "./cache.js"
 export { PROVIDER_DEFAULTS, PROVIDER_CATEGORIES } from "./defaults.js"
-export { createProviderFromConfig, validateProviderConfig, getDefaultConfig } from "./factory.js"
+export {
+  createProviderFromConfig,
+  validateProviderConfig,
+  getDefaultConfig,
+} from "./factory.js"
 export { DynamicProviderLoader, createDynamicProviderLoader } from "./loader.js"
 export type { ProviderLoaderOptions } from "./loader.js"
 export { createProviderApi } from "./api.js"
@@ -1050,14 +1186,14 @@ export { createProviderApi } from "./api.js"
 
 ## API Endpoints
 
-| Method | Endpoint | Description | Scope |
-|--------|----------|-------------|-------|
-| GET | /api/providers | List tenant providers | providers:read |
-| POST | /api/providers | Create provider | providers:write |
-| GET | /api/providers/:id | Get provider (secrets masked) | providers:read |
-| PATCH | /api/providers/:id | Update provider | providers:write |
-| DELETE | /api/providers/:id | Delete provider | providers:write |
-| GET | /api/providers/types | List available types | providers:read |
+| Method | Endpoint             | Description                   | Scope           |
+| ------ | -------------------- | ----------------------------- | --------------- |
+| GET    | /api/providers       | List tenant providers         | providers:read  |
+| POST   | /api/providers       | Create provider               | providers:write |
+| GET    | /api/providers/:id   | Get provider (secrets masked) | providers:read  |
+| PATCH  | /api/providers/:id   | Update provider               | providers:write |
+| DELETE | /api/providers/:id   | Delete provider               | providers:write |
+| GET    | /api/providers/types | List available types          | providers:read  |
 
 ## Security
 

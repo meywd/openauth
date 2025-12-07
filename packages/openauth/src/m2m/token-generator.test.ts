@@ -176,7 +176,7 @@ describe("generateM2MToken", () => {
 
       // JTI should be a valid UUID format
       expect(claims1.jti).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
       )
     })
   })
@@ -487,7 +487,7 @@ describe("generateM2MToken", () => {
 
       const claims = await decodeJWT(result.access_token)
       expect(claims.scope).toBe(
-        "api:read api:write users:admin billing:manage reports:view"
+        "api:read api:write users:admin billing:manage reports:view",
       )
     })
   })

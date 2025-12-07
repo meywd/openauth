@@ -360,7 +360,11 @@ describe("hexToBytes", () => {
   })
 
   test("converts mixed hex string to bytes", () => {
-    const hex = "0123456789abcdef" + "0123456789abcdef" + "0123456789abcdef" + "0123456789abcdef"
+    const hex =
+      "0123456789abcdef" +
+      "0123456789abcdef" +
+      "0123456789abcdef" +
+      "0123456789abcdef"
     const bytes = hexToBytes(hex)
 
     expect(bytes.length).toBe(32)
@@ -371,7 +375,8 @@ describe("hexToBytes", () => {
   })
 
   test("converts uppercase hex to bytes", () => {
-    const hex = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+    const hex =
+      "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
     const bytes = hexToBytes(hex)
 
     expect(bytes.length).toBe(32)
@@ -405,7 +410,9 @@ describe("bytesToHex", () => {
   })
 
   test("converts mixed bytes to hex", () => {
-    const bytes = new Uint8Array([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef])
+    const bytes = new Uint8Array([
+      0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+    ])
     const hex = bytesToHex(bytes)
 
     expect(hex).toBe("0123456789abcdef")
@@ -426,7 +433,11 @@ describe("bytesToHex", () => {
   })
 
   test("round-trip conversion", () => {
-    const originalHex = "0123456789abcdef" + "fedcba9876543210" + "0123456789abcdef" + "fedcba9876543210"
+    const originalHex =
+      "0123456789abcdef" +
+      "fedcba9876543210" +
+      "0123456789abcdef" +
+      "fedcba9876543210"
     const bytes = hexToBytes(originalHex)
     const resultHex = bytesToHex(bytes)
 
@@ -445,7 +456,8 @@ describe("hexToBytes and bytesToHex round-trip", () => {
 
   test("round-trip preserves all values", () => {
     // Create a 64-character hex string (32 bytes)
-    const originalHex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    const originalHex =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     const bytes = hexToBytes(originalHex)
     const resultHex = bytesToHex(bytes)
 

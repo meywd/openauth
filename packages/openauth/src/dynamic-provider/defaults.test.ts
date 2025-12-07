@@ -605,7 +605,8 @@ describe("interpolateEndpoint", () => {
   })
 
   test("replaces multiple variables", () => {
-    const url = "https://{domain}.auth.{region}.amazoncognito.com/oauth2/authorize"
+    const url =
+      "https://{domain}.auth.{region}.amazoncognito.com/oauth2/authorize"
     const result = interpolateEndpoint(url, {
       domain: "myapp",
       region: "us-east-1",
@@ -655,8 +656,7 @@ describe("interpolateEndpoint", () => {
   })
 
   test("replaces Cognito placeholders", () => {
-    const url =
-      "https://{domain}.auth.{region}.amazoncognito.com/oauth2/token"
+    const url = "https://{domain}.auth.{region}.amazoncognito.com/oauth2/token"
     const result = interpolateEndpoint(url, {
       domain: "myapp-prod",
       region: "eu-west-1",

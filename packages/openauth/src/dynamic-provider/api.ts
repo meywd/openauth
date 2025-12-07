@@ -209,7 +209,12 @@ export function createProviderApi(options: ProviderApiOptions): Hono {
 
     // Sort by category then display name
     types.sort((a, b) => {
-      const catOrder = { social: 0, enterprise: 1, passwordless: 2, password: 3 }
+      const catOrder = {
+        social: 0,
+        enterprise: 1,
+        passwordless: 2,
+        password: 3,
+      }
       const catDiff =
         (catOrder[a.category] || 99) - (catOrder[b.category] || 99)
       if (catDiff !== 0) return catDiff
@@ -544,9 +549,7 @@ export function createProviderApi(options: ProviderApiOptions): Hono {
 
     // Delete the provider
     await options.database
-      .prepare(
-        "DELETE FROM identity_providers WHERE id = ? AND tenant_id = ?",
-      )
+      .prepare("DELETE FROM identity_providers WHERE id = ? AND tenant_id = ?")
       .bind(id, tenantId)
       .run()
 

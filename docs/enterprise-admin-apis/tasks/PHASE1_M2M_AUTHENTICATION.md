@@ -107,7 +107,7 @@ import type { ScopeValidationResult } from "./types.js"
  */
 export function validateScopes(
   requestedScopes: string[],
-  allowedScopes: string[]
+  allowedScopes: string[],
 ): ScopeValidationResult {
   // Empty requested = grant all allowed
   if (requestedScopes.length === 0) {
@@ -213,7 +213,7 @@ export class InvalidScopeError extends OauthError {
   constructor(deniedScopes: string[]) {
     super(
       "invalid_scope",
-      `Requested scope(s) not allowed: ${deniedScopes.join(", ")}`
+      `Requested scope(s) not allowed: ${deniedScopes.join(", ")}`,
     )
   }
 }
@@ -222,7 +222,7 @@ export class UnsupportedGrantTypeError extends OauthError {
   constructor(grantType: string) {
     super(
       "unsupported_grant_type",
-      `Grant type "${grantType}" not allowed for this client`
+      `Grant type "${grantType}" not allowed for this client`,
     )
   }
 }
@@ -240,32 +240,42 @@ if (grantType === "client_credentials") {
     // M2M CLIENT CREDENTIALS FLOW (RFC 6749 Section 4.4)
 
     if (!clientAuthenticator) {
-      return c.json({
-        error: "unsupported_grant_type",
-        error_description: "M2M authentication requires clientDb configuration",
-      }, 400)
+      return c.json(
+        {
+          error: "unsupported_grant_type",
+          error_description:
+            "M2M authentication requires clientDb configuration",
+        },
+        400,
+      )
     }
 
     // Extract client credentials (Basic auth or POST body)
     const credentials = extractClientCredentials(c, form)
     if (!credentials.clientId || !credentials.clientSecret) {
-      return c.json({
-        error: "invalid_request",
-        error_description: "Missing client credentials",
-      }, 400)
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description: "Missing client credentials",
+        },
+        400,
+      )
     }
 
     // Authenticate client
     const authResult = await clientAuthenticator.authenticateClient(
       credentials.clientId,
-      credentials.clientSecret
+      credentials.clientSecret,
     )
 
     if (!authResult.client) {
-      return c.json({
-        error: "invalid_client",
-        error_description: "Client authentication failed",
-      }, 401)
+      return c.json(
+        {
+          error: "invalid_client",
+          error_description: "Client authentication failed",
+        },
+        401,
+      )
     }
 
     const client = authResult.client
@@ -273,10 +283,14 @@ if (grantType === "client_credentials") {
     // Verify client has client_credentials grant type
     const allowedGrants = client.grant_types || []
     if (!allowedGrants.includes("client_credentials")) {
-      return c.json({
-        error: "unauthorized_client",
-        error_description: "Client not authorized for client_credentials grant",
-      }, 403)
+      return c.json(
+        {
+          error: "unauthorized_client",
+          error_description:
+            "Client not authorized for client_credentials grant",
+        },
+        403,
+      )
     }
 
     // Parse and validate scopes
@@ -285,10 +299,13 @@ if (grantType === "client_credentials") {
 
     const scopeResult = validateScopes(requestedScopes, allowedScopes)
     if (!scopeResult.valid) {
-      return c.json({
-        error: "invalid_scope",
-        error_description: `Scope(s) not allowed: ${scopeResult.denied.join(", ")}`,
-      }, 400)
+      return c.json(
+        {
+          error: "invalid_scope",
+          error_description: `Scope(s) not allowed: ${scopeResult.denied.join(", ")}`,
+        },
+        400,
+      )
     }
 
     // Generate M2M token
@@ -340,14 +357,14 @@ Client                          Token Endpoint                    D1 Database
 
 ## Validation Requirements
 
-| Check | Error Code | HTTP Status |
-|-------|------------|-------------|
-| Missing grant_type | invalid_request | 400 |
-| Missing client credentials | invalid_request | 400 |
-| Invalid client_id | invalid_client | 401 |
-| Wrong client_secret | invalid_client | 401 |
-| client_credentials not in grant_types | unauthorized_client | 403 |
-| Requested scope not allowed | invalid_scope | 400 |
+| Check                                 | Error Code          | HTTP Status |
+| ------------------------------------- | ------------------- | ----------- |
+| Missing grant_type                    | invalid_request     | 400         |
+| Missing client credentials            | invalid_request     | 400         |
+| Invalid client_id                     | invalid_client      | 401         |
+| Wrong client_secret                   | invalid_client      | 401         |
+| client_credentials not in grant_types | unauthorized_client | 403         |
+| Requested scope not allowed           | invalid_scope       | 400         |
 
 ## JWT Claims Structure
 

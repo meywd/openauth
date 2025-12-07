@@ -92,7 +92,7 @@ export class AuthError extends Error {
   constructor(
     public code: string,
     message: string,
-    public status: number = 401
+    public status: number = 401,
   ) {
     super(message)
     this.name = "AuthError"
@@ -101,11 +101,7 @@ export class AuthError extends Error {
 
 export class MissingTokenError extends AuthError {
   constructor() {
-    super(
-      "missing_token",
-      "Authorization header is required",
-      401
-    )
+    super("missing_token", "Authorization header is required", 401)
   }
 }
 
@@ -114,7 +110,7 @@ export class InvalidTokenError extends AuthError {
     super(
       "invalid_token",
       reason ? `Invalid token: ${reason}` : "Invalid or expired token",
-      401
+      401,
     )
   }
 }
@@ -124,18 +120,14 @@ export class InsufficientScopeError extends AuthError {
     super(
       "insufficient_scope",
       `Required scope(s): ${required.join(", ")}. Granted: ${granted.join(", ") || "none"}`,
-      403
+      403,
     )
   }
 }
 
 export class TenantMismatchError extends AuthError {
   constructor() {
-    super(
-      "tenant_mismatch",
-      "Access denied: tenant mismatch",
-      403
-    )
+    super("tenant_mismatch", "Access denied: tenant mismatch", 403)
   }
 }
 
@@ -144,7 +136,7 @@ export class RateLimitExceededError extends AuthError {
     super(
       "rate_limit_exceeded",
       `Rate limit exceeded. Retry after ${retryAfter} seconds`,
-      429
+      429,
     )
   }
 }
@@ -176,7 +168,9 @@ interface BearerAuthOptions {
 /**
  * Extract Bearer token from Authorization header
  */
-export function extractBearerToken(authHeader: string | undefined): string | null {
+export function extractBearerToken(
+  authHeader: string | undefined,
+): string | null {
   if (!authHeader) return null
   const match = authHeader.match(/^Bearer\s+(.+)$/i)
   return match ? match[1] : null
@@ -216,7 +210,10 @@ export function bearerAuth(options: BearerAuthOptions) {
 
       await next()
     } catch (error) {
-      if (error instanceof MissingTokenError || error instanceof InvalidTokenError) {
+      if (
+        error instanceof MissingTokenError ||
+        error instanceof InvalidTokenError
+      ) {
         throw error
       }
       throw new InvalidTokenError((error as Error).message)
@@ -229,7 +226,7 @@ export function bearerAuth(options: BearerAuthOptions) {
  */
 function validateTokenPayload(
   payload: JWTPayload,
-  requireM2M?: boolean
+  requireM2M?: boolean,
 ): TokenPayload {
   if (!payload.sub) {
     throw new InvalidTokenError("missing sub claim")
@@ -503,7 +500,10 @@ const inMemoryStore = new Map<string, { count: number; resetAt: number }>()
  * Rate limit storage interface
  */
 export interface RateLimitStore {
-  increment(key: string, windowMs: number): Promise<{ count: number; resetAt: number }>
+  increment(
+    key: string,
+    windowMs: number,
+  ): Promise<{ count: number; resetAt: number }>
 }
 
 /**
@@ -564,20 +564,24 @@ export const defaultKeyGenerator: KeyGenerator = (c) => {
   if (clientId) return `rl:client:${clientId}`
 
   const tenantId = c.get("tenantId") || "default"
-  const ip = c.req.header("CF-Connecting-IP") ||
-             c.req.header("X-Forwarded-For")?.split(",")[0] ||
-             "unknown"
+  const ip =
+    c.req.header("CF-Connecting-IP") ||
+    c.req.header("X-Forwarded-For")?.split(",")[0] ||
+    "unknown"
   return `rl:${tenantId}:${ip}`
 }
 
 /**
  * Rate limiting middleware
  */
-export function rateLimit(config: RateLimitConfig, options?: {
-  store?: RateLimitStore
-  keyGenerator?: KeyGenerator
-  skip?: (c: any) => boolean
-}) {
+export function rateLimit(
+  config: RateLimitConfig,
+  options?: {
+    store?: RateLimitStore
+    keyGenerator?: KeyGenerator
+    skip?: (c: any) => boolean
+  },
+) {
   const store = options?.store || memoryStore
   const keyGenerator = options?.keyGenerator || defaultKeyGenerator
   const windowMs = config.window * 1000
@@ -618,7 +622,7 @@ export function rateLimit(config: RateLimitConfig, options?: {
  */
 export function endpointRateLimit(
   limits: Record<string, RateLimitConfig>,
-  options?: { store?: RateLimitStore }
+  options?: { store?: RateLimitStore },
 ) {
   return createMiddleware(async (c, next) => {
     const path = c.req.path
@@ -694,11 +698,14 @@ export function authErrorHandler() {
       return c.json(toOAuthError(error), 429)
     }
 
-    if (error instanceof MissingTokenError || error instanceof InvalidTokenError) {
+    if (
+      error instanceof MissingTokenError ||
+      error instanceof InvalidTokenError
+    ) {
       // RFC 6750 - WWW-Authenticate header
       c.header(
         "WWW-Authenticate",
-        `Bearer realm="api", error="${error.code}", error_description="${error.message}"`
+        `Bearer realm="api", error="${error.code}", error_description="${error.message}"`,
       )
       return c.json(toOAuthError(error), 401)
     }
@@ -707,7 +714,7 @@ export function authErrorHandler() {
       // RFC 6750 - insufficient_scope
       c.header(
         "WWW-Authenticate",
-        `Bearer realm="api", error="insufficient_scope", error_description="${error.message}"`
+        `Bearer realm="api", error="insufficient_scope", error_description="${error.message}"`,
       )
       return c.json(toOAuthError(error), 403)
     }
@@ -735,10 +742,7 @@ export function onAuthError(error: Error, c: Context) {
     }
 
     if (error.status === 401) {
-      c.header(
-        "WWW-Authenticate",
-        `Bearer realm="api", error="${error.code}"`
-      )
+      c.header("WWW-Authenticate", `Bearer realm="api", error="${error.code}"`)
     }
 
     return c.json(toOAuthError(error), error.status)
@@ -746,7 +750,10 @@ export function onAuthError(error: Error, c: Context) {
 
   // Return generic error for non-auth errors
   console.error("Unhandled error:", error)
-  return c.json({ error: "server_error", error_description: "Internal server error" }, 500)
+  return c.json(
+    { error: "server_error", error_description: "Internal server error" },
+    500,
+  )
 }
 ```
 
@@ -787,7 +794,9 @@ export interface EnterpriseAuthOptions {
 /**
  * Create a composed middleware stack for enterprise APIs
  */
-export function enterpriseAuth(options: EnterpriseAuthOptions): MiddlewareHandler[] {
+export function enterpriseAuth(
+  options: EnterpriseAuthOptions,
+): MiddlewareHandler[] {
   const middlewares: MiddlewareHandler[] = []
 
   // 1. Rate limiting (first, to reject early)
@@ -801,7 +810,7 @@ export function enterpriseAuth(options: EnterpriseAuthOptions): MiddlewareHandle
       getPublicKey: options.getPublicKey,
       issuer: options.issuer,
       requireM2M: options.requireM2M,
-    })
+    }),
   )
 
   // 3. Tenant isolation
@@ -809,7 +818,7 @@ export function enterpriseAuth(options: EnterpriseAuthOptions): MiddlewareHandle
     middlewares.push(
       requireTenantMatch({
         allowSuperAdmin: options.allowSuperAdmin,
-      })
+      }),
     )
   }
 
@@ -824,7 +833,9 @@ export function enterpriseAuth(options: EnterpriseAuthOptions): MiddlewareHandle
 /**
  * Helper to apply multiple middleware to a route
  */
-export function applyMiddleware(...middlewares: MiddlewareHandler[]): MiddlewareHandler {
+export function applyMiddleware(
+  ...middlewares: MiddlewareHandler[]
+): MiddlewareHandler {
   return async (c, next) => {
     const compose = async (index: number): Promise<void> => {
       if (index >= middlewares.length) {
@@ -930,11 +941,14 @@ app.onError(onAuthError)
 app.use("/api/*", rateLimit({ max: 100, window: 60 }))
 
 // Authentication
-app.use("/api/*", bearerAuth({
-  getPublicKey: () => getPublicKeyFromJWKS(),
-  issuer: "https://auth.example.com",
-  requireM2M: true,
-}))
+app.use(
+  "/api/*",
+  bearerAuth({
+    getPublicKey: () => getPublicKeyFromJWKS(),
+    issuer: "https://auth.example.com",
+    requireM2M: true,
+  }),
+)
 
 // Tenant isolation
 app.use("/api/*", requireTenantMatch())
@@ -984,11 +998,14 @@ app.get("/api/users", ...authMiddleware, async (c) => {
 ```typescript
 import { endpointRateLimit } from "@openauthjs/openauth/middleware"
 
-app.use("/api/*", endpointRateLimit({
-  "POST:/api/users": { max: 10, window: 60 },  // 10 creates per minute
-  "DELETE:/api/users/:id": { max: 5, window: 60 },  // 5 deletes per minute
-  "*": { max: 100, window: 60 },  // Default
-}))
+app.use(
+  "/api/*",
+  endpointRateLimit({
+    "POST:/api/users": { max: 10, window: 60 }, // 10 creates per minute
+    "DELETE:/api/users/:id": { max: 5, window: 60 }, // 5 deletes per minute
+    "*": { max: 100, window: 60 }, // Default
+  }),
+)
 ```
 
 ### Wildcard Scopes
@@ -997,9 +1014,9 @@ app.use("/api/*", endpointRateLimit({
 // Client with "users:*" scope can access any users:* endpoint
 const scopes = ["users:*"]
 
-hasScope(scopes, "users:read")   // true
-hasScope(scopes, "users:write")  // true
-hasScope(scopes, "roles:read")   // false
+hasScope(scopes, "users:read") // true
+hasScope(scopes, "users:write") // true
+hasScope(scopes, "roles:read") // false
 
 // Admin with "*" scope can access everything
 hasScope(["*"], "anything:here") // true
@@ -1111,10 +1128,13 @@ describe("bearerAuth middleware", () => {
   test("rejects missing Authorization header", async () => {
     const app = new Hono()
     app.onError(onAuthError)
-    app.use("/*", bearerAuth({
-      getPublicKey: async () => mockPublicKey,
-      issuer: "test",
-    }))
+    app.use(
+      "/*",
+      bearerAuth({
+        getPublicKey: async () => mockPublicKey,
+        issuer: "test",
+      }),
+    )
     app.get("/", (c) => c.text("ok"))
 
     const res = await app.request("/")
@@ -1126,10 +1146,13 @@ describe("bearerAuth middleware", () => {
   test("accepts valid token", async () => {
     const app = new Hono()
     app.onError(onAuthError)
-    app.use("/*", bearerAuth({
-      getPublicKey: async () => mockPublicKey,
-      issuer: "test",
-    }))
+    app.use(
+      "/*",
+      bearerAuth({
+        getPublicKey: async () => mockPublicKey,
+        issuer: "test",
+      }),
+    )
     app.get("/", (c) => c.json({ sub: c.get("token").sub }))
 
     const token = await createMockToken({ sub: "user123" })

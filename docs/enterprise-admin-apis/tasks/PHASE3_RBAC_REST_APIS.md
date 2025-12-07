@@ -7,6 +7,7 @@ Extend existing RBAC implementation with missing CRUD endpoints for roles and pe
 ## Current State Analysis
 
 **Already Implemented** in `/packages/openauth/src/rbac/admin-endpoints.ts`:
+
 - `POST /roles` - Create role
 - `GET /roles` - List roles
 - `POST /permissions` - Create permission
@@ -19,6 +20,7 @@ Extend existing RBAC implementation with missing CRUD endpoints for roles and pe
 - `GET /roles/:roleId/permissions` - List role permissions
 
 **Missing Endpoints** to implement:
+
 - `GET /roles/:id` - Get single role with permissions
 - `PATCH /roles/:id` - Update role
 - `DELETE /roles/:id` - Delete role (with cascade)
@@ -266,21 +268,31 @@ router.patch("/roles/:roleId", async (c) => {
   }
 
   if (body.name === undefined && body.description === undefined) {
-    return c.json({
-      error: "Bad Request",
-      message: "At least one of name or description must be provided",
-    }, 400)
+    return c.json(
+      {
+        error: "Bad Request",
+        message: "At least one of name or description must be provided",
+      },
+      400,
+    )
   }
 
   if (body.name !== undefined) {
     if (typeof body.name !== "string" || body.name.length === 0) {
-      return c.json({ error: "Bad Request", message: "name must be a non-empty string" }, 400)
+      return c.json(
+        { error: "Bad Request", message: "name must be a non-empty string" },
+        400,
+      )
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(body.name)) {
-      return c.json({
-        error: "Bad Request",
-        message: "name must contain only alphanumeric characters, hyphens, and underscores",
-      }, 400)
+      return c.json(
+        {
+          error: "Bad Request",
+          message:
+            "name must contain only alphanumeric characters, hyphens, and underscores",
+        },
+        400,
+      )
     }
   }
 
@@ -339,7 +351,10 @@ router.delete("/permissions/:permissionId", async (c) => {
   const permissionId = c.req.param("permissionId")
 
   if (!permissionId) {
-    return c.json({ error: "Bad Request", message: "permissionId is required" }, 400)
+    return c.json(
+      { error: "Bad Request", message: "permissionId is required" },
+      400,
+    )
   }
 
   try {
@@ -383,6 +398,7 @@ export interface ErrorResponse {
 ## Cascading Delete Behavior
 
 ### Role Deletion
+
 ```
 DELETE Role
   │
@@ -396,6 +412,7 @@ DELETE Role
 ```
 
 ### Permission Deletion
+
 ```
 DELETE Permission
   │
@@ -406,29 +423,29 @@ DELETE Permission
 
 ## Required Scopes
 
-| Endpoint | Method | Required Scope |
-|----------|--------|----------------|
-| /roles/:id | GET | roles:read |
-| /roles/:id | PATCH | roles:write |
-| /roles/:id | DELETE | roles:delete |
+| Endpoint         | Method | Required Scope     |
+| ---------------- | ------ | ------------------ |
+| /roles/:id       | GET    | roles:read         |
+| /roles/:id       | PATCH  | roles:write        |
+| /roles/:id       | DELETE | roles:delete       |
 | /permissions/:id | DELETE | permissions:delete |
 
 ## Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| role_not_found | 404 | Role does not exist |
-| permission_not_found | 404 | Permission does not exist |
-| cannot_delete_system_role | 403 | System roles cannot be deleted |
-| invalid_input | 400 | Invalid input (e.g., bad role name format) |
+| Code                      | HTTP Status | Description                                |
+| ------------------------- | ----------- | ------------------------------------------ |
+| role_not_found            | 404         | Role does not exist                        |
+| permission_not_found      | 404         | Permission does not exist                  |
+| cannot_delete_system_role | 403         | System roles cannot be deleted             |
+| invalid_input             | 400         | Invalid input (e.g., bad role name format) |
 
 ## Validation Rules
 
-| Field | Pattern | Description |
-|-------|---------|-------------|
-| Role name | `^[a-zA-Z0-9_-]+$` | Alphanumeric, hyphens, underscores |
-| Role name length | 1-100 chars | Max 100 characters |
-| Permission name | `^[a-zA-Z0-9_:.-]+$` | Alphanumeric, underscores, colons, dots, hyphens |
+| Field            | Pattern              | Description                                      |
+| ---------------- | -------------------- | ------------------------------------------------ |
+| Role name        | `^[a-zA-Z0-9_-]+$`   | Alphanumeric, hyphens, underscores               |
+| Role name length | 1-100 chars          | Max 100 characters                               |
+| Permission name  | `^[a-zA-Z0-9_:.-]+$` | Alphanumeric, underscores, colons, dots, hyphens |
 
 ## Tests
 

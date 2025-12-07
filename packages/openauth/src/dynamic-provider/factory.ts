@@ -140,7 +140,8 @@ function createStandardOAuth2Provider(
     clientID: provider.clientId!,
     clientSecret: provider.clientSecret!,
     endpoint: {
-      authorization: endpoints.authorization || defaults.endpoints.authorization,
+      authorization:
+        endpoints.authorization || defaults.endpoints.authorization,
       token: endpoints.token || defaults.endpoints.token,
       jwks: endpoints.jwks || defaults.endpoints.jwks,
     },
@@ -195,10 +196,13 @@ function createCognitoProvider(
   config: CognitoProviderConfig,
 ): Provider<any> {
   if (!config.domain || !config.region) {
-    throw new ProviderConfigError("Cognito provider requires domain and region", [
-      "Set config.domain to your Cognito User Pool domain prefix",
-      "Set config.region to your AWS region (e.g., us-east-1)",
-    ])
+    throw new ProviderConfigError(
+      "Cognito provider requires domain and region",
+      [
+        "Set config.domain to your Cognito User Pool domain prefix",
+        "Set config.region to your AWS region (e.g., us-east-1)",
+      ],
+    )
   }
 
   const scopes = config.scopes || defaults.defaultScopes
@@ -228,14 +232,20 @@ function createKeycloakProvider(
   config: KeycloakProviderConfig,
 ): Provider<any> {
   if (!config.baseUrl || !config.realm) {
-    throw new ProviderConfigError("Keycloak provider requires baseUrl and realm", [
-      "Set config.baseUrl to your Keycloak server URL",
-      "Set config.realm to your Keycloak realm name",
-    ])
+    throw new ProviderConfigError(
+      "Keycloak provider requires baseUrl and realm",
+      [
+        "Set config.baseUrl to your Keycloak server URL",
+        "Set config.realm to your Keycloak realm name",
+      ],
+    )
   }
 
   const scopes = config.scopes || defaults.defaultScopes
-  const vars = { baseUrl: config.baseUrl.replace(/\/$/, ""), realm: config.realm }
+  const vars = {
+    baseUrl: config.baseUrl.replace(/\/$/, ""),
+    realm: config.realm,
+  }
 
   const endpoints = {
     authorization: interpolateEndpoint(defaults.endpoints.authorization, vars),
@@ -394,10 +404,7 @@ export function validateProviderConfig(
     errors.push("'query' must be an object")
   }
 
-  if (
-    oauthConfig.endpoints &&
-    typeof oauthConfig.endpoints !== "object"
-  ) {
+  if (oauthConfig.endpoints && typeof oauthConfig.endpoints !== "object") {
     errors.push("'endpoints' must be an object")
   }
 

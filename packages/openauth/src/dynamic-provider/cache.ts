@@ -247,7 +247,10 @@ export class TTLCache<T> {
  * @param providerName - Provider name within the tenant
  * @returns Cache key string
  */
-export function providerCacheKey(tenantId: string, providerName: string): string {
+export function providerCacheKey(
+  tenantId: string,
+  providerName: string,
+): string {
   return `provider:${tenantId}:${providerName}`
 }
 

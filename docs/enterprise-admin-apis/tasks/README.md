@@ -4,14 +4,14 @@ This directory contains detailed implementation guides for each phase of the Ent
 
 ## Phase Overview
 
-| Phase | Document | Description | Est. Effort |
-|-------|----------|-------------|-------------|
-| 1 | [PHASE1_M2M_AUTHENTICATION.md](./PHASE1_M2M_AUTHENTICATION.md) | OAuth 2.0 Client Credentials Grant | 2 days |
-| 2 | [PHASE2_USER_MANAGEMENT.md](./PHASE2_USER_MANAGEMENT.md) | User CRUD APIs with identity linking | 3 days |
-| 3 | [PHASE3_RBAC_REST_APIS.md](./PHASE3_RBAC_REST_APIS.md) | Complete RBAC REST endpoints | 2 days |
-| 4 | [PHASE4_DYNAMIC_PROVIDERS.md](./PHASE4_DYNAMIC_PROVIDERS.md) | Database-driven identity providers | 5 days |
-| 5 | [PHASE5_CLIENT_MANAGEMENT.md](./PHASE5_CLIENT_MANAGEMENT.md) | OAuth client CRUD and secret rotation | 3 days |
-| 6 | [PHASE6_SCOPE_AUTHORIZATION.md](./PHASE6_SCOPE_AUTHORIZATION.md) | Scope-based auth middleware | 2 days |
+| Phase | Document                                                         | Description                           | Est. Effort |
+| ----- | ---------------------------------------------------------------- | ------------------------------------- | ----------- |
+| 1     | [PHASE1_M2M_AUTHENTICATION.md](./PHASE1_M2M_AUTHENTICATION.md)   | OAuth 2.0 Client Credentials Grant    | 2 days      |
+| 2     | [PHASE2_USER_MANAGEMENT.md](./PHASE2_USER_MANAGEMENT.md)         | User CRUD APIs with identity linking  | 3 days      |
+| 3     | [PHASE3_RBAC_REST_APIS.md](./PHASE3_RBAC_REST_APIS.md)           | Complete RBAC REST endpoints          | 2 days      |
+| 4     | [PHASE4_DYNAMIC_PROVIDERS.md](./PHASE4_DYNAMIC_PROVIDERS.md)     | Database-driven identity providers    | 5 days      |
+| 5     | [PHASE5_CLIENT_MANAGEMENT.md](./PHASE5_CLIENT_MANAGEMENT.md)     | OAuth client CRUD and secret rotation | 3 days      |
+| 6     | [PHASE6_SCOPE_AUTHORIZATION.md](./PHASE6_SCOPE_AUTHORIZATION.md) | Scope-based auth middleware           | 2 days      |
 
 **Total Estimated Effort: 17 days**
 
@@ -93,10 +93,10 @@ packages/openauth/src/
 
 ## Database Migrations
 
-| Migration | Phase | Tables |
-|-----------|-------|--------|
-| 005_user_management.sql | 2 | users, user_identities |
-| 006_identity_providers.sql | 4 | identity_providers |
+| Migration                  | Phase | Tables                 |
+| -------------------------- | ----- | ---------------------- |
+| 005_user_management.sql    | 2     | users, user_identities |
+| 006_identity_providers.sql | 4     | identity_providers     |
 
 Note: OAuth clients table should already exist from earlier migrations.
 

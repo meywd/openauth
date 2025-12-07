@@ -12,7 +12,7 @@ export type UserErrorCode =
 export class UserError extends Error {
   constructor(
     public readonly code: UserErrorCode,
-    message: string
+    message: string,
   ) {
     super(message)
     this.name = "UserError"
@@ -22,7 +22,7 @@ export class UserError extends Error {
 export class UserValidationError extends Error {
   constructor(
     public readonly field: string,
-    message: string
+    message: string,
   ) {
     super(message)
     this.name = "UserValidationError"

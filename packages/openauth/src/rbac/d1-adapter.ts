@@ -829,7 +829,9 @@ export class RBACAdapter {
 
     // Delete in order: user_roles -> role_permissions -> role
     await this.db
-      .prepare("DELETE FROM rbac_user_roles WHERE role_id = ? AND tenant_id = ?")
+      .prepare(
+        "DELETE FROM rbac_user_roles WHERE role_id = ? AND tenant_id = ?",
+      )
       .bind(roleId, tenantId)
       .run()
 

@@ -81,7 +81,7 @@ export class D1UserAdapter {
         user.created_at,
         user.updated_at,
         user.last_login_at,
-        user.deleted_at
+        user.deleted_at,
       )
       .run()
   }
@@ -116,27 +116,41 @@ export class D1UserAdapter {
         user.last_login_at,
         user.deleted_at,
         user.tenant_id,
-        user.id
+        user.id,
       )
       .run()
   }
 
-  async updateUserStatus(tenantId: string, userId: string, status: UserStatus): Promise<void> {
+  async updateUserStatus(
+    tenantId: string,
+    userId: string,
+    status: UserStatus,
+  ): Promise<void> {
     const query = `
       UPDATE ${this.usersTable}
       SET status = ?, updated_at = ?
       WHERE tenant_id = ? AND id = ?
     `
-    await this.db.prepare(query).bind(status, Date.now(), tenantId, userId).run()
+    await this.db
+      .prepare(query)
+      .bind(status, Date.now(), tenantId, userId)
+      .run()
   }
 
-  async softDeleteUser(tenantId: string, userId: string, deletedAt: number): Promise<void> {
+  async softDeleteUser(
+    tenantId: string,
+    userId: string,
+    deletedAt: number,
+  ): Promise<void> {
     const query = `
       UPDATE ${this.usersTable}
       SET status = 'deleted', deleted_at = ?, updated_at = ?
       WHERE tenant_id = ? AND id = ?
     `
-    await this.db.prepare(query).bind(deletedAt, deletedAt, tenantId, userId).run()
+    await this.db
+      .prepare(query)
+      .bind(deletedAt, deletedAt, tenantId, userId)
+      .run()
   }
 
   async updateLastLogin(tenantId: string, userId: string): Promise<void> {
@@ -149,7 +163,10 @@ export class D1UserAdapter {
     await this.db.prepare(query).bind(now, now, tenantId, userId).run()
   }
 
-  async listUsers(tenantId: string, params: ListUsersParams): Promise<ListUsersResponse> {
+  async listUsers(
+    tenantId: string,
+    params: ListUsersParams,
+  ): Promise<ListUsersResponse> {
     const {
       status,
       email,
@@ -160,7 +177,9 @@ export class D1UserAdapter {
     } = params
 
     const validSortColumns = ["created_at", "updated_at", "email", "name"]
-    const sortColumn = validSortColumns.includes(sort_by) ? sort_by : "created_at"
+    const sortColumn = validSortColumns.includes(sort_by)
+      ? sort_by
+      : "created_at"
     const sortDir = sort_order === "asc" ? "ASC" : "DESC"
 
     const conditions: string[] = ["tenant_id = ?", "deleted_at IS NULL"]
@@ -185,7 +204,9 @@ export class D1UserAdapter {
 
       if (cursorRow) {
         const op = sortDir === "DESC" ? "<" : ">"
-        conditions.push(`(${sortColumn} ${op} ? OR (${sortColumn} = ? AND id ${op} ?))`)
+        conditions.push(
+          `(${sortColumn} ${op} ? OR (${sortColumn} = ? AND id ${op} ?))`,
+        )
         bindings.push(cursorRow[sortColumn], cursorRow[sortColumn], cursor)
       }
     }
@@ -199,7 +220,10 @@ export class D1UserAdapter {
     `
     bindings.push(limit + 1)
 
-    const result = await this.db.prepare(query).bind(...bindings).all<UserRow>()
+    const result = await this.db
+      .prepare(query)
+      .bind(...bindings)
+      .all<UserRow>()
     const rows = result.results || []
     const hasMore = rows.length > limit
 
@@ -211,17 +235,24 @@ export class D1UserAdapter {
       SELECT COUNT(*) as count FROM ${this.usersTable}
       WHERE tenant_id = ? AND deleted_at IS NULL
     `
-    const countResult = await this.db.prepare(countQuery).bind(tenantId).first<{ count: number }>()
+    const countResult = await this.db
+      .prepare(countQuery)
+      .bind(tenantId)
+      .first<{ count: number }>()
 
     return {
       users,
-      next_cursor: hasMore && users.length > 0 ? users[users.length - 1].id : null,
+      next_cursor:
+        hasMore && users.length > 0 ? users[users.length - 1].id : null,
       has_more: hasMore,
       total_count: countResult?.count,
     }
   }
 
-  async revokeAllUserSessions(tenantId: string, userId: string): Promise<{ deletedCount: number }> {
+  async revokeAllUserSessions(
+    tenantId: string,
+    userId: string,
+  ): Promise<{ deletedCount: number }> {
     const query = `
       DELETE FROM account_sessions
       WHERE user_id = ? AND browser_session_id IN (
@@ -247,24 +278,36 @@ export class D1UserAdapter {
         identity.provider,
         identity.provider_user_id,
         identity.provider_data ? JSON.stringify(identity.provider_data) : null,
-        identity.created_at
+        identity.created_at,
       )
       .run()
   }
 
-  async getIdentity(tenantId: string, identityId: string): Promise<UserIdentity | null> {
+  async getIdentity(
+    tenantId: string,
+    identityId: string,
+  ): Promise<UserIdentity | null> {
     const query = `SELECT * FROM ${this.identitiesTable} WHERE tenant_id = ? AND id = ?`
-    const row = await this.db.prepare(query).bind(tenantId, identityId).first<IdentityRow>()
+    const row = await this.db
+      .prepare(query)
+      .bind(tenantId, identityId)
+      .first<IdentityRow>()
     return row ? this.rowToIdentity(row) : null
   }
 
-  async getUserIdentities(tenantId: string, userId: string): Promise<UserIdentity[]> {
+  async getUserIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserIdentity[]> {
     const query = `
       SELECT * FROM ${this.identitiesTable}
       WHERE tenant_id = ? AND user_id = ?
       ORDER BY created_at DESC
     `
-    const result = await this.db.prepare(query).bind(tenantId, userId).all<IdentityRow>()
+    const result = await this.db
+      .prepare(query)
+      .bind(tenantId, userId)
+      .all<IdentityRow>()
     return (result.results || []).map((row) => this.rowToIdentity(row))
   }
 
@@ -301,6 +344,8 @@ export class D1UserAdapter {
   }
 }
 
-export function createD1UserAdapter(config: D1UserAdapterConfig): D1UserAdapter {
+export function createD1UserAdapter(
+  config: D1UserAdapterConfig,
+): D1UserAdapter {
   return new D1UserAdapter(config)
 }

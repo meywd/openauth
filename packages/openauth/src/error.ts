@@ -128,7 +128,7 @@ export class InvalidScopeError extends OauthError {
   constructor(deniedScopes: string[]) {
     super(
       "invalid_scope",
-      `Requested scope(s) not allowed: ${deniedScopes.join(", ")}`
+      `Requested scope(s) not allowed: ${deniedScopes.join(", ")}`,
     )
   }
 }
@@ -140,7 +140,7 @@ export class UnsupportedGrantTypeError extends OauthError {
   constructor(grantType: string) {
     super(
       "unsupported_grant_type",
-      `Grant type "${grantType}" not allowed for this client`
+      `Grant type "${grantType}" not allowed for this client`,
     )
   }
 }

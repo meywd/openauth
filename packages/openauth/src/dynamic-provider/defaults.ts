@@ -151,9 +151,11 @@ export const PROVIDER_DEFAULTS: Record<string, ProviderDefaults> = {
 
   cognito: {
     endpoints: {
-      authorization: "https://{domain}.auth.{region}.amazoncognito.com/oauth2/authorize",
+      authorization:
+        "https://{domain}.auth.{region}.amazoncognito.com/oauth2/authorize",
       token: "https://{domain}.auth.{region}.amazoncognito.com/oauth2/token",
-      userinfo: "https://{domain}.auth.{region}.amazoncognito.com/oauth2/userInfo",
+      userinfo:
+        "https://{domain}.auth.{region}.amazoncognito.com/oauth2/userInfo",
     },
     defaultScopes: ["openid", "email", "profile"],
   },
@@ -287,7 +289,9 @@ export function getDefaultScopes(type: ProviderType): string[] {
  * @returns True if PKCE is required
  */
 export function requiresPKCE(type: ProviderType): boolean {
-  return PKCE_REQUIRED_PROVIDERS.has(type) || PROVIDER_DEFAULTS[type]?.pkce === true
+  return (
+    PKCE_REQUIRED_PROVIDERS.has(type) || PROVIDER_DEFAULTS[type]?.pkce === true
+  )
 }
 
 /**
@@ -317,7 +321,9 @@ export function getProviderCategory(type: ProviderType): ProviderCategory {
  * @returns Human-readable display name
  */
 export function getProviderDisplayName(type: ProviderType): string {
-  return PROVIDER_DISPLAY_NAMES[type] || type.charAt(0).toUpperCase() + type.slice(1)
+  return (
+    PROVIDER_DISPLAY_NAMES[type] || type.charAt(0).toUpperCase() + type.slice(1)
+  )
 }
 
 /**

@@ -89,9 +89,9 @@ describe("hasAllScopes", () => {
   })
 
   test("returns false when any required scope is missing", () => {
-    expect(
-      hasAllScopes(["users:read"], ["users:read", "users:write"]),
-    ).toBe(false)
+    expect(hasAllScopes(["users:read"], ["users:read", "users:write"])).toBe(
+      false,
+    )
     expect(hasAllScopes(["users:read"], ["users:write"])).toBe(false)
   })
 
@@ -120,9 +120,7 @@ describe("hasAllScopes", () => {
   })
 
   test("partial wildcard match returns false", () => {
-    expect(
-      hasAllScopes(["users:*"], ["users:read", "posts:write"]),
-    ).toBe(false)
+    expect(hasAllScopes(["users:*"], ["users:read", "posts:write"])).toBe(false)
   })
 
   test("combination of exact and wildcard scopes", () => {
@@ -137,12 +135,12 @@ describe("hasAllScopes", () => {
 
 describe("hasAnyScope", () => {
   test("returns true when at least one required scope is present", () => {
-    expect(
-      hasAnyScope(["users:read"], ["users:read", "users:write"]),
-    ).toBe(true)
-    expect(
-      hasAnyScope(["users:write"], ["users:read", "users:write"]),
-    ).toBe(true)
+    expect(hasAnyScope(["users:read"], ["users:read", "users:write"])).toBe(
+      true,
+    )
+    expect(hasAnyScope(["users:write"], ["users:read", "users:write"])).toBe(
+      true,
+    )
   })
 
   test("returns false when no required scopes are present", () => {
@@ -172,10 +170,7 @@ describe("hasAnyScope", () => {
 
   test("returns true when first scope matches", () => {
     expect(
-      hasAnyScope(
-        ["users:read", "posts:read"],
-        ["users:read", "users:write"],
-      ),
+      hasAnyScope(["users:read", "posts:read"], ["users:read", "users:write"]),
     ).toBe(true)
   })
 

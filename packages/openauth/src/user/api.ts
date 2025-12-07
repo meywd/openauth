@@ -16,7 +16,10 @@ function validateEmail(email: unknown): string {
     throw new UserValidationError("email", "Invalid email format")
   }
   if (normalized.length > 255) {
-    throw new UserValidationError("email", "Email must be 255 characters or less")
+    throw new UserValidationError(
+      "email",
+      "Email must be 255 characters or less",
+    )
   }
   return normalized
 }
@@ -46,7 +49,14 @@ type StatusCode = 400 | 403 | 404 | 409 | 500
 
 function handleError(ctx: Context, error: unknown) {
   if (error instanceof UserValidationError) {
-    return ctx.json({ error: "validation_error", error_description: error.message, field: error.field }, 400)
+    return ctx.json(
+      {
+        error: "validation_error",
+        error_description: error.message,
+        field: error.field,
+      },
+      400,
+    )
   }
   if (error instanceof UserError) {
     const statusMap: Record<string, StatusCode> = {
@@ -58,10 +68,16 @@ function handleError(ctx: Context, error: unknown) {
       user_deleted: 403,
     }
     const status: StatusCode = statusMap[error.code] || 400
-    return ctx.json({ error: error.code, error_description: error.message }, status)
+    return ctx.json(
+      { error: error.code, error_description: error.message },
+      status,
+    )
   }
   console.error("User API error:", error)
-  return ctx.json({ error: "server_error", error_description: "Internal server error" }, 500)
+  return ctx.json(
+    { error: "server_error", error_description: "Internal server error" },
+    500,
+  )
 }
 
 export function userApiRoutes(service: UserService): Hono {
@@ -127,7 +143,8 @@ export function userApiRoutes(service: UserService): Hono {
       const body = await ctx.req.json()
       const updates: any = {}
       if (body.email !== undefined) updates.email = validateEmail(body.email)
-      if (body.name !== undefined) updates.name = body.name === null ? null : String(body.name).trim()
+      if (body.name !== undefined)
+        updates.name = body.name === null ? null : String(body.name).trim()
       if (body.metadata !== undefined) updates.metadata = body.metadata
 
       const user = await service.updateUser(tenantId, id, updates)

@@ -69,11 +69,21 @@ export interface SuspendUserResponse {
 }
 
 export const USER_STORAGE_KEYS = {
-  user: (tenantId: string, userId: string): string[] =>
-    ["user", tenantId, userId],
-  email: (tenantId: string, email: string): string[] =>
-    ["user", "email", tenantId, email.toLowerCase()],
-  identity: (tenantId: string, provider: string, providerUserId: string): string[] =>
-    ["user", "identity", tenantId, provider, providerUserId],
+  user: (tenantId: string, userId: string): string[] => [
+    "user",
+    tenantId,
+    userId,
+  ],
+  email: (tenantId: string, email: string): string[] => [
+    "user",
+    "email",
+    tenantId,
+    email.toLowerCase(),
+  ],
+  identity: (
+    tenantId: string,
+    provider: string,
+    providerUserId: string,
+  ): string[] => ["user", "identity", tenantId, provider, providerUserId],
   userPrefix: (tenantId: string): string[] => ["user", tenantId],
 }

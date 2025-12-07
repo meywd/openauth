@@ -147,15 +147,9 @@ export {
 export type { ValidationResult } from "./factory.js"
 
 // Loader
-export {
-  DynamicProviderLoader,
-  createDynamicProviderLoader,
-} from "./loader.js"
+export { DynamicProviderLoader, createDynamicProviderLoader } from "./loader.js"
 export type { ProviderLoaderOptions } from "./loader.js"
 
 // API
-export {
-  createProviderApi,
-  providerApiMiddleware,
-} from "./api.js"
+export { createProviderApi, providerApiMiddleware } from "./api.js"
 export type { ProviderApiOptions } from "./api.js"

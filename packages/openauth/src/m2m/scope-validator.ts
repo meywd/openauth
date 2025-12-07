@@ -5,7 +5,7 @@ import type { ScopeValidationResult } from "./types.js"
  */
 export function validateScopes(
   requestedScopes: string[],
-  allowedScopes: string[]
+  allowedScopes: string[],
 ): ScopeValidationResult {
   // Empty requested = grant all allowed
   if (requestedScopes.length === 0) {

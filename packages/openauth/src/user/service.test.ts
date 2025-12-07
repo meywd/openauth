@@ -143,7 +143,7 @@ describe("UserService", () => {
       await expect(
         service.createUser(tenantId, {
           email: "test@example.com",
-        })
+        }),
       ).rejects.toThrow(UserError)
 
       try {
@@ -224,13 +224,19 @@ describe("UserService", () => {
         email: "test@example.com",
       })
 
-      const user = await service.getUserByEmail(tenantId, "  test@example.com  ")
+      const user = await service.getUserByEmail(
+        tenantId,
+        "  test@example.com  ",
+      )
 
       expect(user).toEqual(created)
     })
 
     test("returns null for non-existent email", async () => {
-      const user = await service.getUserByEmail(tenantId, "nonexistent@example.com")
+      const user = await service.getUserByEmail(
+        tenantId,
+        "nonexistent@example.com",
+      )
 
       expect(user).toBeNull()
     })
@@ -278,11 +284,17 @@ describe("UserService", () => {
       expect(updated.email).toBe("new@example.com")
 
       // Old email should not resolve
-      const oldLookup = await service.getUserByEmail(tenantId, "old@example.com")
+      const oldLookup = await service.getUserByEmail(
+        tenantId,
+        "old@example.com",
+      )
       expect(oldLookup).toBeNull()
 
       // New email should resolve
-      const newLookup = await service.getUserByEmail(tenantId, "new@example.com")
+      const newLookup = await service.getUserByEmail(
+        tenantId,
+        "new@example.com",
+      )
       expect(newLookup?.id).toBe(created.id)
     })
 
@@ -314,7 +326,7 @@ describe("UserService", () => {
       await expect(
         service.updateUser(tenantId, "usr_nonexistent", {
           name: "New Name",
-        })
+        }),
       ).rejects.toThrow(UserError)
 
       try {
@@ -336,7 +348,7 @@ describe("UserService", () => {
       await expect(
         service.updateUser(tenantId, created.id, {
           name: "New Name",
-        })
+        }),
       ).rejects.toThrow(UserError)
 
       try {
@@ -360,7 +372,7 @@ describe("UserService", () => {
       await expect(
         service.updateUser(tenantId, user1.id, {
           email: "user2@example.com",
-        })
+        }),
       ).rejects.toThrow(UserError)
 
       try {
@@ -402,13 +414,13 @@ describe("UserService", () => {
 
       // But storage should still have the record with deleted_at set
       const userKey = USER_STORAGE_KEYS.user(tenantId, created.id)
-      const storedUser = await storage.get(userKey) as User
+      const storedUser = (await storage.get(userKey)) as User
       expect(storedUser.deleted_at).toBeGreaterThan(0)
       expect(storedUser.status).toBe("deleted")
       expect(d1Adapter.softDeleteUser).toHaveBeenCalledWith(
         tenantId,
         created.id,
-        storedUser.deleted_at
+        storedUser.deleted_at,
       )
     })
 
@@ -430,12 +442,15 @@ describe("UserService", () => {
 
       await service.deleteUser(tenantId, created.id)
 
-      expect(d1Adapter.revokeAllUserSessions).toHaveBeenCalledWith(tenantId, created.id)
+      expect(d1Adapter.revokeAllUserSessions).toHaveBeenCalledWith(
+        tenantId,
+        created.id,
+      )
     })
 
     test("throws error when user not found", async () => {
       await expect(
-        service.deleteUser(tenantId, "usr_nonexistent")
+        service.deleteUser(tenantId, "usr_nonexistent"),
       ).rejects.toThrow(UserError)
 
       try {
@@ -452,9 +467,9 @@ describe("UserService", () => {
 
       await service.deleteUser(tenantId, created.id)
 
-      await expect(
-        service.deleteUser(tenantId, created.id)
-      ).rejects.toThrow(UserError)
+      await expect(service.deleteUser(tenantId, created.id)).rejects.toThrow(
+        UserError,
+      )
     })
   })
 
@@ -471,7 +486,7 @@ describe("UserService", () => {
       expect(d1Adapter.updateUserStatus).toHaveBeenCalledWith(
         tenantId,
         created.id,
-        "suspended"
+        "suspended",
       )
     })
 
@@ -480,12 +495,17 @@ describe("UserService", () => {
         email: "test@example.com",
       })
 
-      d1Adapter.revokeAllUserSessions = mock(async () => ({ deletedCount: 3 })) as any
+      d1Adapter.revokeAllUserSessions = mock(async () => ({
+        deletedCount: 3,
+      })) as any
 
       const result = await service.suspendUser(tenantId, created.id)
 
       expect(result.revoked_sessions).toBe(3)
-      expect(d1Adapter.revokeAllUserSessions).toHaveBeenCalledWith(tenantId, created.id)
+      expect(d1Adapter.revokeAllUserSessions).toHaveBeenCalledWith(
+        tenantId,
+        created.id,
+      )
     })
 
     test("returns early if user already suspended", async () => {
@@ -497,7 +517,9 @@ describe("UserService", () => {
 
       // Reset mocks
       d1Adapter.updateUserStatus = mock(async () => {}) as any
-      d1Adapter.revokeAllUserSessions = mock(async () => ({ deletedCount: 0 })) as any
+      d1Adapter.revokeAllUserSessions = mock(async () => ({
+        deletedCount: 0,
+      })) as any
 
       const result = await service.suspendUser(tenantId, created.id)
 
@@ -508,7 +530,7 @@ describe("UserService", () => {
 
     test("throws error when user not found", async () => {
       await expect(
-        service.suspendUser(tenantId, "usr_nonexistent")
+        service.suspendUser(tenantId, "usr_nonexistent"),
       ).rejects.toThrow(UserError)
 
       try {
@@ -525,9 +547,9 @@ describe("UserService", () => {
 
       await service.deleteUser(tenantId, created.id)
 
-      await expect(
-        service.suspendUser(tenantId, created.id)
-      ).rejects.toThrow(UserError)
+      await expect(service.suspendUser(tenantId, created.id)).rejects.toThrow(
+        UserError,
+      )
 
       try {
         await service.suspendUser(tenantId, created.id)
@@ -551,13 +573,13 @@ describe("UserService", () => {
       expect(d1Adapter.updateUserStatus).toHaveBeenCalledWith(
         tenantId,
         created.id,
-        "active"
+        "active",
       )
     })
 
     test("throws error when user not found", async () => {
       await expect(
-        service.unsuspendUser(tenantId, "usr_nonexistent")
+        service.unsuspendUser(tenantId, "usr_nonexistent"),
       ).rejects.toThrow(UserError)
 
       try {
@@ -572,9 +594,9 @@ describe("UserService", () => {
         email: "test@example.com",
       })
 
-      await expect(
-        service.unsuspendUser(tenantId, created.id)
-      ).rejects.toThrow(UserError)
+      await expect(service.unsuspendUser(tenantId, created.id)).rejects.toThrow(
+        UserError,
+      )
 
       try {
         await service.unsuspendUser(tenantId, created.id)
@@ -619,7 +641,11 @@ describe("UserService", () => {
         provider_data: {},
       })
 
-      const identityKey = USER_STORAGE_KEYS.identity(tenantId, "google", "google_123")
+      const identityKey = USER_STORAGE_KEYS.identity(
+        tenantId,
+        "google",
+        "google_123",
+      )
       const storedIdentity = await storage.get(identityKey)
       expect(storedIdentity).toEqual(identity)
     })
@@ -630,7 +656,7 @@ describe("UserService", () => {
           provider: "google",
           provider_user_id: "google_123",
           provider_data: {},
-        })
+        }),
       ).rejects.toThrow(UserError)
 
       try {
@@ -660,7 +686,7 @@ describe("UserService", () => {
           provider: "google",
           provider_user_id: "google_123",
           provider_data: {},
-        })
+        }),
       ).rejects.toThrow(UserError)
 
       try {
@@ -690,10 +716,17 @@ describe("UserService", () => {
 
       await service.unlinkIdentity(tenantId, user.id, identity.id)
 
-      expect(d1Adapter.deleteIdentity).toHaveBeenCalledWith(tenantId, identity.id)
+      expect(d1Adapter.deleteIdentity).toHaveBeenCalledWith(
+        tenantId,
+        identity.id,
+      )
 
       // Verify storage key was removed
-      const identityKey = USER_STORAGE_KEYS.identity(tenantId, "google", "google_123")
+      const identityKey = USER_STORAGE_KEYS.identity(
+        tenantId,
+        "google",
+        "google_123",
+      )
       const storedIdentity = await storage.get(identityKey)
       expect(storedIdentity).toBeUndefined()
     })
@@ -706,7 +739,7 @@ describe("UserService", () => {
       d1Adapter.getIdentity = mock(async () => null) as any
 
       await expect(
-        service.unlinkIdentity(tenantId, user.id, "idt_nonexistent")
+        service.unlinkIdentity(tenantId, user.id, "idt_nonexistent"),
       ).rejects.toThrow(UserError)
 
       try {
@@ -734,7 +767,7 @@ describe("UserService", () => {
       d1Adapter.getIdentity = mock(async () => identity) as any
 
       await expect(
-        service.unlinkIdentity(tenantId, user2.id, identity.id)
+        service.unlinkIdentity(tenantId, user2.id, identity.id),
       ).rejects.toThrow(UserError)
 
       try {
@@ -777,7 +810,10 @@ describe("UserService", () => {
       const identities = await service.getUserIdentities(tenantId, user.id)
 
       expect(identities).toEqual(mockIdentities)
-      expect(d1Adapter.getUserIdentities).toHaveBeenCalledWith(tenantId, user.id)
+      expect(d1Adapter.getUserIdentities).toHaveBeenCalledWith(
+        tenantId,
+        user.id,
+      )
     })
 
     test("returns empty array when no D1 adapter", async () => {
@@ -786,7 +822,10 @@ describe("UserService", () => {
         email: "test@example.com",
       })
 
-      const identities = await serviceWithoutD1.getUserIdentities(tenantId, user.id)
+      const identities = await serviceWithoutD1.getUserIdentities(
+        tenantId,
+        user.id,
+      )
 
       expect(identities).toEqual([])
     })
@@ -821,7 +860,10 @@ describe("UserService", () => {
     })
 
     test("returns null when user not found", async () => {
-      const result = await service.getUserWithIdentities(tenantId, "usr_nonexistent")
+      const result = await service.getUserWithIdentities(
+        tenantId,
+        "usr_nonexistent",
+      )
 
       expect(result).toBeNull()
     })
@@ -833,17 +875,22 @@ describe("UserService", () => {
         email: "test@example.com",
       })
 
-      d1Adapter.revokeAllUserSessions = mock(async () => ({ deletedCount: 5 })) as any
+      d1Adapter.revokeAllUserSessions = mock(async () => ({
+        deletedCount: 5,
+      })) as any
 
       const result = await service.revokeUserSessions(tenantId, user.id)
 
       expect(result.revoked_count).toBe(5)
-      expect(d1Adapter.revokeAllUserSessions).toHaveBeenCalledWith(tenantId, user.id)
+      expect(d1Adapter.revokeAllUserSessions).toHaveBeenCalledWith(
+        tenantId,
+        user.id,
+      )
     })
 
     test("throws error when user not found", async () => {
       await expect(
-        service.revokeUserSessions(tenantId, "usr_nonexistent")
+        service.revokeUserSessions(tenantId, "usr_nonexistent"),
       ).rejects.toThrow(UserError)
     })
   })

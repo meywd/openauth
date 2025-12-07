@@ -134,12 +134,22 @@ export interface SuspendUserResponse {
 }
 
 export const USER_STORAGE_KEYS = {
-  user: (tenantId: string, userId: string): string[] =>
-    ["user", tenantId, userId],
-  email: (tenantId: string, email: string): string[] =>
-    ["user", "email", tenantId, email.toLowerCase()],
-  identity: (tenantId: string, provider: string, providerUserId: string): string[] =>
-    ["user", "identity", tenantId, provider, providerUserId],
+  user: (tenantId: string, userId: string): string[] => [
+    "user",
+    tenantId,
+    userId,
+  ],
+  email: (tenantId: string, email: string): string[] => [
+    "user",
+    "email",
+    tenantId,
+    email.toLowerCase(),
+  ],
+  identity: (
+    tenantId: string,
+    provider: string,
+    providerUserId: string,
+  ): string[] => ["user", "identity", tenantId, provider, providerUserId],
   userPrefix: (tenantId: string): string[] => ["user", tenantId],
 }
 ```
@@ -161,7 +171,7 @@ export type UserErrorCode =
 export class UserError extends Error {
   constructor(
     public readonly code: UserErrorCode,
-    message: string
+    message: string,
   ) {
     super(message)
     this.name = "UserError"
@@ -171,7 +181,7 @@ export class UserError extends Error {
 export class UserValidationError extends Error {
   constructor(
     public readonly field: string,
-    message: string
+    message: string,
   ) {
     super(message)
     this.name = "UserValidationError"
@@ -265,7 +275,7 @@ export class D1UserAdapter {
         user.created_at,
         user.updated_at,
         user.last_login_at,
-        user.deleted_at
+        user.deleted_at,
       )
       .run()
   }
@@ -300,27 +310,41 @@ export class D1UserAdapter {
         user.last_login_at,
         user.deleted_at,
         user.tenant_id,
-        user.id
+        user.id,
       )
       .run()
   }
 
-  async updateUserStatus(tenantId: string, userId: string, status: UserStatus): Promise<void> {
+  async updateUserStatus(
+    tenantId: string,
+    userId: string,
+    status: UserStatus,
+  ): Promise<void> {
     const query = `
       UPDATE ${this.usersTable}
       SET status = ?, updated_at = ?
       WHERE tenant_id = ? AND id = ?
     `
-    await this.db.prepare(query).bind(status, Date.now(), tenantId, userId).run()
+    await this.db
+      .prepare(query)
+      .bind(status, Date.now(), tenantId, userId)
+      .run()
   }
 
-  async softDeleteUser(tenantId: string, userId: string, deletedAt: number): Promise<void> {
+  async softDeleteUser(
+    tenantId: string,
+    userId: string,
+    deletedAt: number,
+  ): Promise<void> {
     const query = `
       UPDATE ${this.usersTable}
       SET status = 'deleted', deleted_at = ?, updated_at = ?
       WHERE tenant_id = ? AND id = ?
     `
-    await this.db.prepare(query).bind(deletedAt, deletedAt, tenantId, userId).run()
+    await this.db
+      .prepare(query)
+      .bind(deletedAt, deletedAt, tenantId, userId)
+      .run()
   }
 
   async updateLastLogin(tenantId: string, userId: string): Promise<void> {
@@ -333,7 +357,10 @@ export class D1UserAdapter {
     await this.db.prepare(query).bind(now, now, tenantId, userId).run()
   }
 
-  async listUsers(tenantId: string, params: ListUsersParams): Promise<ListUsersResponse> {
+  async listUsers(
+    tenantId: string,
+    params: ListUsersParams,
+  ): Promise<ListUsersResponse> {
     const {
       status,
       email,
@@ -344,7 +371,9 @@ export class D1UserAdapter {
     } = params
 
     const validSortColumns = ["created_at", "updated_at", "email", "name"]
-    const sortColumn = validSortColumns.includes(sort_by) ? sort_by : "created_at"
+    const sortColumn = validSortColumns.includes(sort_by)
+      ? sort_by
+      : "created_at"
     const sortDir = sort_order === "asc" ? "ASC" : "DESC"
 
     const conditions: string[] = ["tenant_id = ?", "deleted_at IS NULL"]
@@ -369,7 +398,9 @@ export class D1UserAdapter {
 
       if (cursorRow) {
         const op = sortDir === "DESC" ? "<" : ">"
-        conditions.push(`(${sortColumn} ${op} ? OR (${sortColumn} = ? AND id ${op} ?))`)
+        conditions.push(
+          `(${sortColumn} ${op} ? OR (${sortColumn} = ? AND id ${op} ?))`,
+        )
         bindings.push(cursorRow[sortColumn], cursorRow[sortColumn], cursor)
       }
     }
@@ -383,7 +414,10 @@ export class D1UserAdapter {
     `
     bindings.push(limit + 1)
 
-    const result = await this.db.prepare(query).bind(...bindings).all<UserRow>()
+    const result = await this.db
+      .prepare(query)
+      .bind(...bindings)
+      .all<UserRow>()
     const rows = result.results || []
     const hasMore = rows.length > limit
 
@@ -395,17 +429,24 @@ export class D1UserAdapter {
       SELECT COUNT(*) as count FROM ${this.usersTable}
       WHERE tenant_id = ? AND deleted_at IS NULL
     `
-    const countResult = await this.db.prepare(countQuery).bind(tenantId).first<{ count: number }>()
+    const countResult = await this.db
+      .prepare(countQuery)
+      .bind(tenantId)
+      .first<{ count: number }>()
 
     return {
       users,
-      next_cursor: hasMore && users.length > 0 ? users[users.length - 1].id : null,
+      next_cursor:
+        hasMore && users.length > 0 ? users[users.length - 1].id : null,
       has_more: hasMore,
       total_count: countResult?.count,
     }
   }
 
-  async revokeAllUserSessions(tenantId: string, userId: string): Promise<{ deletedCount: number }> {
+  async revokeAllUserSessions(
+    tenantId: string,
+    userId: string,
+  ): Promise<{ deletedCount: number }> {
     const query = `
       DELETE FROM account_sessions
       WHERE user_id = ? AND browser_session_id IN (
@@ -431,24 +472,36 @@ export class D1UserAdapter {
         identity.provider,
         identity.provider_user_id,
         identity.provider_data ? JSON.stringify(identity.provider_data) : null,
-        identity.created_at
+        identity.created_at,
       )
       .run()
   }
 
-  async getIdentity(tenantId: string, identityId: string): Promise<UserIdentity | null> {
+  async getIdentity(
+    tenantId: string,
+    identityId: string,
+  ): Promise<UserIdentity | null> {
     const query = `SELECT * FROM ${this.identitiesTable} WHERE tenant_id = ? AND id = ?`
-    const row = await this.db.prepare(query).bind(tenantId, identityId).first<IdentityRow>()
+    const row = await this.db
+      .prepare(query)
+      .bind(tenantId, identityId)
+      .first<IdentityRow>()
     return row ? this.rowToIdentity(row) : null
   }
 
-  async getUserIdentities(tenantId: string, userId: string): Promise<UserIdentity[]> {
+  async getUserIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserIdentity[]> {
     const query = `
       SELECT * FROM ${this.identitiesTable}
       WHERE tenant_id = ? AND user_id = ?
       ORDER BY created_at DESC
     `
-    const result = await this.db.prepare(query).bind(tenantId, userId).all<IdentityRow>()
+    const result = await this.db
+      .prepare(query)
+      .bind(tenantId, userId)
+      .all<IdentityRow>()
     return (result.results || []).map((row) => this.rowToIdentity(row))
   }
 
@@ -485,7 +538,9 @@ export class D1UserAdapter {
   }
 }
 
-export function createD1UserAdapter(config: D1UserAdapterConfig): D1UserAdapter {
+export function createD1UserAdapter(
+  config: D1UserAdapterConfig,
+): D1UserAdapter {
   return new D1UserAdapter(config)
 }
 ```
@@ -512,17 +567,38 @@ import type { D1UserAdapter } from "./d1-adapter.js"
 export interface UserService {
   createUser(tenantId: string, params: CreateUserParams): Promise<User>
   getUser(tenantId: string, userId: string): Promise<User | null>
-  getUserWithIdentities(tenantId: string, userId: string): Promise<UserWithIdentities | null>
+  getUserWithIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserWithIdentities | null>
   getUserByEmail(tenantId: string, email: string): Promise<User | null>
-  updateUser(tenantId: string, userId: string, params: UpdateUserParams): Promise<User>
+  updateUser(
+    tenantId: string,
+    userId: string,
+    params: UpdateUserParams,
+  ): Promise<User>
   deleteUser(tenantId: string, userId: string): Promise<void>
-  listUsers(tenantId: string, params?: ListUsersParams): Promise<ListUsersResponse>
+  listUsers(
+    tenantId: string,
+    params?: ListUsersParams,
+  ): Promise<ListUsersResponse>
   suspendUser(tenantId: string, userId: string): Promise<SuspendUserResponse>
   unsuspendUser(tenantId: string, userId: string): Promise<User>
-  revokeUserSessions(tenantId: string, userId: string): Promise<RevokeSessionsResponse>
+  revokeUserSessions(
+    tenantId: string,
+    userId: string,
+  ): Promise<RevokeSessionsResponse>
   getUserIdentities(tenantId: string, userId: string): Promise<UserIdentity[]>
-  linkIdentity(tenantId: string, userId: string, identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">): Promise<UserIdentity>
-  unlinkIdentity(tenantId: string, userId: string, identityId: string): Promise<void>
+  linkIdentity(
+    tenantId: string,
+    userId: string,
+    identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">,
+  ): Promise<UserIdentity>
+  unlinkIdentity(
+    tenantId: string,
+    userId: string,
+    identityId: string,
+  ): Promise<void>
   updateLastLogin(tenantId: string, userId: string): Promise<void>
 }
 
@@ -546,7 +622,10 @@ export class UserServiceImpl implements UserService {
 
     const existingUser = await this.getUserByEmail(tenantId, normalizedEmail)
     if (existingUser) {
-      throw new UserError("email_already_exists", `Email '${normalizedEmail}' is already registered`)
+      throw new UserError(
+        "email_already_exists",
+        `Email '${normalizedEmail}' is already registered`,
+      )
     }
 
     const now = Date.now()
@@ -566,7 +645,9 @@ export class UserServiceImpl implements UserService {
     }
 
     await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), user)
-    await this.storage.set(USER_STORAGE_KEYS.email(tenantId, normalizedEmail), { userId })
+    await this.storage.set(USER_STORAGE_KEYS.email(tenantId, normalizedEmail), {
+      userId,
+    })
 
     if (this.d1Adapter) {
       await this.d1Adapter.createUser(user)
@@ -576,14 +657,19 @@ export class UserServiceImpl implements UserService {
   }
 
   async getUser(tenantId: string, userId: string): Promise<User | null> {
-    const user = await this.storage.get(USER_STORAGE_KEYS.user(tenantId, userId))
+    const user = await this.storage.get(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+    )
     if (!user) return null
     const typedUser = user as User
     if (typedUser.deleted_at !== null) return null
     return typedUser
   }
 
-  async getUserWithIdentities(tenantId: string, userId: string): Promise<UserWithIdentities | null> {
+  async getUserWithIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserWithIdentities | null> {
     const user = await this.getUser(tenantId, userId)
     if (!user) return null
     const identities = await this.getUserIdentities(tenantId, userId)
@@ -592,12 +678,18 @@ export class UserServiceImpl implements UserService {
 
   async getUserByEmail(tenantId: string, email: string): Promise<User | null> {
     const normalizedEmail = email.toLowerCase().trim()
-    const lookup = await this.storage.get(USER_STORAGE_KEYS.email(tenantId, normalizedEmail))
+    const lookup = await this.storage.get(
+      USER_STORAGE_KEYS.email(tenantId, normalizedEmail),
+    )
     if (!lookup) return null
     return this.getUser(tenantId, (lookup as { userId: string }).userId)
   }
 
-  async updateUser(tenantId: string, userId: string, params: UpdateUserParams): Promise<User> {
+  async updateUser(
+    tenantId: string,
+    userId: string,
+    params: UpdateUserParams,
+  ): Promise<User> {
     const existingUser = await this.getUser(tenantId, userId)
     if (!existingUser) {
       throw new UserError("user_not_found", `User '${userId}' not found`)
@@ -607,12 +699,16 @@ export class UserServiceImpl implements UserService {
     }
 
     const oldEmail = existingUser.email
-    let newEmail = params.email !== undefined ? params.email.toLowerCase().trim() : oldEmail
+    let newEmail =
+      params.email !== undefined ? params.email.toLowerCase().trim() : oldEmail
 
     if (newEmail !== oldEmail) {
       const emailConflict = await this.getUserByEmail(tenantId, newEmail)
       if (emailConflict && emailConflict.id !== userId) {
-        throw new UserError("email_already_exists", `Email '${newEmail}' is already registered`)
+        throw new UserError(
+          "email_already_exists",
+          `Email '${newEmail}' is already registered`,
+        )
       }
     }
 
@@ -620,16 +716,22 @@ export class UserServiceImpl implements UserService {
       ...existingUser,
       email: newEmail,
       name: params.name !== undefined ? params.name : existingUser.name,
-      metadata: params.metadata !== undefined ? params.metadata : existingUser.metadata,
+      metadata:
+        params.metadata !== undefined ? params.metadata : existingUser.metadata,
       updated_at: Date.now(),
     }
 
     if (oldEmail !== newEmail) {
       await this.storage.remove(USER_STORAGE_KEYS.email(tenantId, oldEmail))
-      await this.storage.set(USER_STORAGE_KEYS.email(tenantId, newEmail), { userId })
+      await this.storage.set(USER_STORAGE_KEYS.email(tenantId, newEmail), {
+        userId,
+      })
     }
 
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.updateUser(updatedUser)
@@ -652,8 +754,13 @@ export class UserServiceImpl implements UserService {
       updated_at: now,
     }
 
-    await this.storage.remove(USER_STORAGE_KEYS.email(tenantId, existingUser.email))
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), deletedUser)
+    await this.storage.remove(
+      USER_STORAGE_KEYS.email(tenantId, existingUser.email),
+    )
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      deletedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.softDeleteUser(tenantId, userId, now)
@@ -661,7 +768,10 @@ export class UserServiceImpl implements UserService {
     }
   }
 
-  async listUsers(tenantId: string, params?: ListUsersParams): Promise<ListUsersResponse> {
+  async listUsers(
+    tenantId: string,
+    params?: ListUsersParams,
+  ): Promise<ListUsersResponse> {
     if (this.d1Adapter) {
       return this.d1Adapter.listUsers(tenantId, params || {})
     }
@@ -669,7 +779,10 @@ export class UserServiceImpl implements UserService {
     return { users: [], next_cursor: null, has_more: false }
   }
 
-  async suspendUser(tenantId: string, userId: string): Promise<SuspendUserResponse> {
+  async suspendUser(
+    tenantId: string,
+    userId: string,
+  ): Promise<SuspendUserResponse> {
     const existingUser = await this.getUser(tenantId, userId)
     if (!existingUser) {
       throw new UserError("user_not_found", `User '${userId}' not found`)
@@ -687,12 +800,18 @@ export class UserServiceImpl implements UserService {
       updated_at: Date.now(),
     }
 
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     let revokedSessions = 0
     if (this.d1Adapter) {
       await this.d1Adapter.updateUserStatus(tenantId, userId, "suspended")
-      const result = await this.d1Adapter.revokeAllUserSessions(tenantId, userId)
+      const result = await this.d1Adapter.revokeAllUserSessions(
+        tenantId,
+        userId,
+      )
       revokedSessions = result.deletedCount
     }
 
@@ -714,7 +833,10 @@ export class UserServiceImpl implements UserService {
       updated_at: Date.now(),
     }
 
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.updateUserStatus(tenantId, userId, "active")
@@ -723,7 +845,10 @@ export class UserServiceImpl implements UserService {
     return updatedUser
   }
 
-  async revokeUserSessions(tenantId: string, userId: string): Promise<RevokeSessionsResponse> {
+  async revokeUserSessions(
+    tenantId: string,
+    userId: string,
+  ): Promise<RevokeSessionsResponse> {
     const existingUser = await this.getUser(tenantId, userId)
     if (!existingUser) {
       throw new UserError("user_not_found", `User '${userId}' not found`)
@@ -731,14 +856,20 @@ export class UserServiceImpl implements UserService {
 
     let revokedCount = 0
     if (this.d1Adapter) {
-      const result = await this.d1Adapter.revokeAllUserSessions(tenantId, userId)
+      const result = await this.d1Adapter.revokeAllUserSessions(
+        tenantId,
+        userId,
+      )
       revokedCount = result.deletedCount
     }
 
     return { revoked_count: revokedCount }
   }
 
-  async getUserIdentities(tenantId: string, userId: string): Promise<UserIdentity[]> {
+  async getUserIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserIdentity[]> {
     if (this.d1Adapter) {
       return this.d1Adapter.getUserIdentities(tenantId, userId)
     }
@@ -748,7 +879,7 @@ export class UserServiceImpl implements UserService {
   async linkIdentity(
     tenantId: string,
     userId: string,
-    identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">
+    identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">,
   ): Promise<UserIdentity> {
     const user = await this.getUser(tenantId, userId)
     if (!user) {
@@ -756,10 +887,17 @@ export class UserServiceImpl implements UserService {
     }
 
     const existingIdentity = await this.storage.get(
-      USER_STORAGE_KEYS.identity(tenantId, identity.provider, identity.provider_user_id)
+      USER_STORAGE_KEYS.identity(
+        tenantId,
+        identity.provider,
+        identity.provider_user_id,
+      ),
     )
     if (existingIdentity) {
-      throw new UserError("identity_already_linked", `Identity ${identity.provider}:${identity.provider_user_id} is already linked`)
+      throw new UserError(
+        "identity_already_linked",
+        `Identity ${identity.provider}:${identity.provider_user_id} is already linked`,
+      )
     }
 
     const newIdentity: UserIdentity = {
@@ -773,8 +911,12 @@ export class UserServiceImpl implements UserService {
     }
 
     await this.storage.set(
-      USER_STORAGE_KEYS.identity(tenantId, identity.provider, identity.provider_user_id),
-      newIdentity
+      USER_STORAGE_KEYS.identity(
+        tenantId,
+        identity.provider,
+        identity.provider_user_id,
+      ),
+      newIdentity,
     )
 
     if (this.d1Adapter) {
@@ -784,14 +926,25 @@ export class UserServiceImpl implements UserService {
     return newIdentity
   }
 
-  async unlinkIdentity(tenantId: string, userId: string, identityId: string): Promise<void> {
+  async unlinkIdentity(
+    tenantId: string,
+    userId: string,
+    identityId: string,
+  ): Promise<void> {
     if (this.d1Adapter) {
       const identity = await this.d1Adapter.getIdentity(tenantId, identityId)
       if (!identity || identity.user_id !== userId) {
-        throw new UserError("identity_not_found", `Identity '${identityId}' not found`)
+        throw new UserError(
+          "identity_not_found",
+          `Identity '${identityId}' not found`,
+        )
       }
       await this.storage.remove(
-        USER_STORAGE_KEYS.identity(tenantId, identity.provider, identity.provider_user_id)
+        USER_STORAGE_KEYS.identity(
+          tenantId,
+          identity.provider,
+          identity.provider_user_id,
+        ),
       )
       await this.d1Adapter.deleteIdentity(tenantId, identityId)
     }
@@ -802,7 +955,10 @@ export class UserServiceImpl implements UserService {
     if (!user) return
 
     const updatedUser: User = { ...user, last_login_at: Date.now() }
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.updateLastLogin(tenantId, userId)
@@ -835,7 +991,10 @@ function validateEmail(email: unknown): string {
     throw new UserValidationError("email", "Invalid email format")
   }
   if (normalized.length > 255) {
-    throw new UserValidationError("email", "Email must be 255 characters or less")
+    throw new UserValidationError(
+      "email",
+      "Email must be 255 characters or less",
+    )
   }
   return normalized
 }
@@ -849,7 +1008,14 @@ function validateUserId(id: string): string {
 
 function handleError(ctx: any, error: unknown) {
   if (error instanceof UserValidationError) {
-    return ctx.json({ error: "validation_error", error_description: error.message, field: error.field }, 400)
+    return ctx.json(
+      {
+        error: "validation_error",
+        error_description: error.message,
+        field: error.field,
+      },
+      400,
+    )
   }
   if (error instanceof UserError) {
     const statusMap: Record<string, number> = {
@@ -860,10 +1026,16 @@ function handleError(ctx: any, error: unknown) {
       user_suspended: 403,
       user_deleted: 403,
     }
-    return ctx.json({ error: error.code, error_description: error.message }, statusMap[error.code] || 400)
+    return ctx.json(
+      { error: error.code, error_description: error.message },
+      statusMap[error.code] || 400,
+    )
   }
   console.error("User API error:", error)
-  return ctx.json({ error: "server_error", error_description: "Internal server error" }, 500)
+  return ctx.json(
+    { error: "server_error", error_description: "Internal server error" },
+    500,
+  )
 }
 
 export function userApiRoutes(service: UserService): Hono {
@@ -933,7 +1105,8 @@ export function userApiRoutes(service: UserService): Hono {
       const body = await ctx.req.json()
       const updates: any = {}
       if (body.email !== undefined) updates.email = validateEmail(body.email)
-      if (body.name !== undefined) updates.name = body.name === null ? null : String(body.name).trim()
+      if (body.name !== undefined)
+        updates.name = body.name === null ? null : String(body.name).trim()
       if (body.metadata !== undefined) updates.metadata = body.metadata
 
       const user = await service.updateUser(tenantId, id, updates)
@@ -1033,28 +1206,28 @@ export { userApiRoutes, createUserApi } from "./api.js"
 
 ## API Endpoints
 
-| Method | Endpoint | Description | Scope |
-|--------|----------|-------------|-------|
-| GET | /api/users | List users (paginated) | users:read |
-| POST | /api/users | Create user | users:write |
-| GET | /api/users/:id | Get user with identities | users:read |
-| PATCH | /api/users/:id | Update user | users:write |
-| DELETE | /api/users/:id | Soft delete user | users:delete |
-| POST | /api/users/:id/suspend | Suspend user + revoke sessions | users:delete |
-| POST | /api/users/:id/unsuspend | Reactivate user | users:write |
-| DELETE | /api/users/:id/sessions | Revoke all sessions | users:delete |
+| Method | Endpoint                 | Description                    | Scope        |
+| ------ | ------------------------ | ------------------------------ | ------------ |
+| GET    | /api/users               | List users (paginated)         | users:read   |
+| POST   | /api/users               | Create user                    | users:write  |
+| GET    | /api/users/:id           | Get user with identities       | users:read   |
+| PATCH  | /api/users/:id           | Update user                    | users:write  |
+| DELETE | /api/users/:id           | Soft delete user               | users:delete |
+| POST   | /api/users/:id/suspend   | Suspend user + revoke sessions | users:delete |
+| POST   | /api/users/:id/unsuspend | Reactivate user                | users:write  |
+| DELETE | /api/users/:id/sessions  | Revoke all sessions            | users:delete |
 
 ## Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| validation_error | 400 | Request validation failed |
-| user_not_found | 404 | User does not exist |
-| identity_not_found | 404 | Identity does not exist |
-| email_already_exists | 409 | Email already registered |
-| identity_already_linked | 409 | Identity already linked |
-| user_suspended | 403 | Operation not allowed on suspended user |
-| user_deleted | 403 | Operation not allowed on deleted user |
+| Code                    | HTTP Status | Description                             |
+| ----------------------- | ----------- | --------------------------------------- |
+| validation_error        | 400         | Request validation failed               |
+| user_not_found          | 404         | User does not exist                     |
+| identity_not_found      | 404         | Identity does not exist                 |
+| email_already_exists    | 409         | Email already registered                |
+| identity_already_linked | 409         | Identity already linked                 |
+| user_suspended          | 403         | Operation not allowed on suspended user |
+| user_deleted            | 403         | Operation not allowed on deleted user   |
 
 ## Checklist
 

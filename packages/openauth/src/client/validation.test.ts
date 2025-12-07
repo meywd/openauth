@@ -52,8 +52,12 @@ describe("validateGrantTypes", () => {
   })
 
   test("rejects invalid grant types", () => {
-    expect(() => validateGrantTypes(["password"])).toThrow(InvalidGrantTypeError)
-    expect(() => validateGrantTypes(["implicit"])).toThrow(InvalidGrantTypeError)
+    expect(() => validateGrantTypes(["password"])).toThrow(
+      InvalidGrantTypeError,
+    )
+    expect(() => validateGrantTypes(["implicit"])).toThrow(
+      InvalidGrantTypeError,
+    )
     expect(() => validateGrantTypes(["invalid"])).toThrow(InvalidGrantTypeError)
   })
 
@@ -84,7 +88,9 @@ describe("validateScopes", () => {
 
   test("rejects too many scopes", () => {
     const manyScopes = Array.from({ length: 51 }, (_, i) => `scope${i}`)
-    expect(() => validateScopes(manyScopes)).toThrow("Maximum 50 scopes allowed")
+    expect(() => validateScopes(manyScopes)).toThrow(
+      "Maximum 50 scopes allowed",
+    )
   })
 
   test("rejects non-array", () => {
@@ -114,9 +120,9 @@ describe("validateRedirectUris", () => {
   })
 
   test("rejects non-localhost HTTP", () => {
-    expect(() =>
-      validateRedirectUris(["http://example.com/callback"]),
-    ).toThrow(InvalidRedirectUriError)
+    expect(() => validateRedirectUris(["http://example.com/callback"])).toThrow(
+      InvalidRedirectUriError,
+    )
   })
 
   test("rejects invalid URIs", () => {
@@ -139,9 +145,9 @@ describe("validateRedirectUris", () => {
   })
 
   test("rejects non-array", () => {
-    expect(() =>
-      validateRedirectUris("https://example.com" as any),
-    ).toThrow("redirect_uris must be an array")
+    expect(() => validateRedirectUris("https://example.com" as any)).toThrow(
+      "redirect_uris must be an array",
+    )
   })
 })
 

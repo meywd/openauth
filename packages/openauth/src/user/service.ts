@@ -17,17 +17,38 @@ import type { D1UserAdapter } from "./d1-adapter.js"
 export interface UserService {
   createUser(tenantId: string, params: CreateUserParams): Promise<User>
   getUser(tenantId: string, userId: string): Promise<User | null>
-  getUserWithIdentities(tenantId: string, userId: string): Promise<UserWithIdentities | null>
+  getUserWithIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserWithIdentities | null>
   getUserByEmail(tenantId: string, email: string): Promise<User | null>
-  updateUser(tenantId: string, userId: string, params: UpdateUserParams): Promise<User>
+  updateUser(
+    tenantId: string,
+    userId: string,
+    params: UpdateUserParams,
+  ): Promise<User>
   deleteUser(tenantId: string, userId: string): Promise<void>
-  listUsers(tenantId: string, params?: ListUsersParams): Promise<ListUsersResponse>
+  listUsers(
+    tenantId: string,
+    params?: ListUsersParams,
+  ): Promise<ListUsersResponse>
   suspendUser(tenantId: string, userId: string): Promise<SuspendUserResponse>
   unsuspendUser(tenantId: string, userId: string): Promise<User>
-  revokeUserSessions(tenantId: string, userId: string): Promise<RevokeSessionsResponse>
+  revokeUserSessions(
+    tenantId: string,
+    userId: string,
+  ): Promise<RevokeSessionsResponse>
   getUserIdentities(tenantId: string, userId: string): Promise<UserIdentity[]>
-  linkIdentity(tenantId: string, userId: string, identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">): Promise<UserIdentity>
-  unlinkIdentity(tenantId: string, userId: string, identityId: string): Promise<void>
+  linkIdentity(
+    tenantId: string,
+    userId: string,
+    identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">,
+  ): Promise<UserIdentity>
+  unlinkIdentity(
+    tenantId: string,
+    userId: string,
+    identityId: string,
+  ): Promise<void>
   updateLastLogin(tenantId: string, userId: string): Promise<void>
 }
 
@@ -51,7 +72,10 @@ export class UserServiceImpl implements UserService {
 
     const existingUser = await this.getUserByEmail(tenantId, normalizedEmail)
     if (existingUser) {
-      throw new UserError("email_already_exists", `Email '${normalizedEmail}' is already registered`)
+      throw new UserError(
+        "email_already_exists",
+        `Email '${normalizedEmail}' is already registered`,
+      )
     }
 
     const now = Date.now()
@@ -71,7 +95,9 @@ export class UserServiceImpl implements UserService {
     }
 
     await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), user)
-    await this.storage.set(USER_STORAGE_KEYS.email(tenantId, normalizedEmail), { userId })
+    await this.storage.set(USER_STORAGE_KEYS.email(tenantId, normalizedEmail), {
+      userId,
+    })
 
     if (this.d1Adapter) {
       await this.d1Adapter.createUser(user)
@@ -81,14 +107,19 @@ export class UserServiceImpl implements UserService {
   }
 
   async getUser(tenantId: string, userId: string): Promise<User | null> {
-    const user = await this.storage.get(USER_STORAGE_KEYS.user(tenantId, userId))
+    const user = await this.storage.get(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+    )
     if (!user) return null
     const typedUser = user as User
     if (typedUser.deleted_at !== null) return null
     return typedUser
   }
 
-  async getUserWithIdentities(tenantId: string, userId: string): Promise<UserWithIdentities | null> {
+  async getUserWithIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserWithIdentities | null> {
     const user = await this.getUser(tenantId, userId)
     if (!user) return null
     const identities = await this.getUserIdentities(tenantId, userId)
@@ -97,12 +128,18 @@ export class UserServiceImpl implements UserService {
 
   async getUserByEmail(tenantId: string, email: string): Promise<User | null> {
     const normalizedEmail = email.toLowerCase().trim()
-    const lookup = await this.storage.get(USER_STORAGE_KEYS.email(tenantId, normalizedEmail))
+    const lookup = await this.storage.get(
+      USER_STORAGE_KEYS.email(tenantId, normalizedEmail),
+    )
     if (!lookup) return null
     return this.getUser(tenantId, (lookup as { userId: string }).userId)
   }
 
-  async updateUser(tenantId: string, userId: string, params: UpdateUserParams): Promise<User> {
+  async updateUser(
+    tenantId: string,
+    userId: string,
+    params: UpdateUserParams,
+  ): Promise<User> {
     const existingUser = await this.getUser(tenantId, userId)
     if (!existingUser) {
       throw new UserError("user_not_found", `User '${userId}' not found`)
@@ -112,12 +149,16 @@ export class UserServiceImpl implements UserService {
     }
 
     const oldEmail = existingUser.email
-    let newEmail = params.email !== undefined ? params.email.toLowerCase().trim() : oldEmail
+    let newEmail =
+      params.email !== undefined ? params.email.toLowerCase().trim() : oldEmail
 
     if (newEmail !== oldEmail) {
       const emailConflict = await this.getUserByEmail(tenantId, newEmail)
       if (emailConflict && emailConflict.id !== userId) {
-        throw new UserError("email_already_exists", `Email '${newEmail}' is already registered`)
+        throw new UserError(
+          "email_already_exists",
+          `Email '${newEmail}' is already registered`,
+        )
       }
     }
 
@@ -125,16 +166,22 @@ export class UserServiceImpl implements UserService {
       ...existingUser,
       email: newEmail,
       name: params.name !== undefined ? params.name : existingUser.name,
-      metadata: params.metadata !== undefined ? params.metadata : existingUser.metadata,
+      metadata:
+        params.metadata !== undefined ? params.metadata : existingUser.metadata,
       updated_at: Date.now(),
     }
 
     if (oldEmail !== newEmail) {
       await this.storage.remove(USER_STORAGE_KEYS.email(tenantId, oldEmail))
-      await this.storage.set(USER_STORAGE_KEYS.email(tenantId, newEmail), { userId })
+      await this.storage.set(USER_STORAGE_KEYS.email(tenantId, newEmail), {
+        userId,
+      })
     }
 
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.updateUser(updatedUser)
@@ -157,8 +204,13 @@ export class UserServiceImpl implements UserService {
       updated_at: now,
     }
 
-    await this.storage.remove(USER_STORAGE_KEYS.email(tenantId, existingUser.email))
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), deletedUser)
+    await this.storage.remove(
+      USER_STORAGE_KEYS.email(tenantId, existingUser.email),
+    )
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      deletedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.softDeleteUser(tenantId, userId, now)
@@ -166,7 +218,10 @@ export class UserServiceImpl implements UserService {
     }
   }
 
-  async listUsers(tenantId: string, params?: ListUsersParams): Promise<ListUsersResponse> {
+  async listUsers(
+    tenantId: string,
+    params?: ListUsersParams,
+  ): Promise<ListUsersResponse> {
     if (this.d1Adapter) {
       return this.d1Adapter.listUsers(tenantId, params || {})
     }
@@ -174,7 +229,10 @@ export class UserServiceImpl implements UserService {
     return { users: [], next_cursor: null, has_more: false }
   }
 
-  async suspendUser(tenantId: string, userId: string): Promise<SuspendUserResponse> {
+  async suspendUser(
+    tenantId: string,
+    userId: string,
+  ): Promise<SuspendUserResponse> {
     const existingUser = await this.getUser(tenantId, userId)
     if (!existingUser) {
       throw new UserError("user_not_found", `User '${userId}' not found`)
@@ -192,12 +250,18 @@ export class UserServiceImpl implements UserService {
       updated_at: Date.now(),
     }
 
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     let revokedSessions = 0
     if (this.d1Adapter) {
       await this.d1Adapter.updateUserStatus(tenantId, userId, "suspended")
-      const result = await this.d1Adapter.revokeAllUserSessions(tenantId, userId)
+      const result = await this.d1Adapter.revokeAllUserSessions(
+        tenantId,
+        userId,
+      )
       revokedSessions = result.deletedCount
     }
 
@@ -219,7 +283,10 @@ export class UserServiceImpl implements UserService {
       updated_at: Date.now(),
     }
 
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.updateUserStatus(tenantId, userId, "active")
@@ -228,7 +295,10 @@ export class UserServiceImpl implements UserService {
     return updatedUser
   }
 
-  async revokeUserSessions(tenantId: string, userId: string): Promise<RevokeSessionsResponse> {
+  async revokeUserSessions(
+    tenantId: string,
+    userId: string,
+  ): Promise<RevokeSessionsResponse> {
     const existingUser = await this.getUser(tenantId, userId)
     if (!existingUser) {
       throw new UserError("user_not_found", `User '${userId}' not found`)
@@ -236,14 +306,20 @@ export class UserServiceImpl implements UserService {
 
     let revokedCount = 0
     if (this.d1Adapter) {
-      const result = await this.d1Adapter.revokeAllUserSessions(tenantId, userId)
+      const result = await this.d1Adapter.revokeAllUserSessions(
+        tenantId,
+        userId,
+      )
       revokedCount = result.deletedCount
     }
 
     return { revoked_count: revokedCount }
   }
 
-  async getUserIdentities(tenantId: string, userId: string): Promise<UserIdentity[]> {
+  async getUserIdentities(
+    tenantId: string,
+    userId: string,
+  ): Promise<UserIdentity[]> {
     if (this.d1Adapter) {
       return this.d1Adapter.getUserIdentities(tenantId, userId)
     }
@@ -253,7 +329,7 @@ export class UserServiceImpl implements UserService {
   async linkIdentity(
     tenantId: string,
     userId: string,
-    identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">
+    identity: Omit<UserIdentity, "id" | "user_id" | "tenant_id" | "created_at">,
   ): Promise<UserIdentity> {
     const user = await this.getUser(tenantId, userId)
     if (!user) {
@@ -261,10 +337,17 @@ export class UserServiceImpl implements UserService {
     }
 
     const existingIdentity = await this.storage.get(
-      USER_STORAGE_KEYS.identity(tenantId, identity.provider, identity.provider_user_id)
+      USER_STORAGE_KEYS.identity(
+        tenantId,
+        identity.provider,
+        identity.provider_user_id,
+      ),
     )
     if (existingIdentity) {
-      throw new UserError("identity_already_linked", `Identity ${identity.provider}:${identity.provider_user_id} is already linked`)
+      throw new UserError(
+        "identity_already_linked",
+        `Identity ${identity.provider}:${identity.provider_user_id} is already linked`,
+      )
     }
 
     const newIdentity: UserIdentity = {
@@ -278,8 +361,12 @@ export class UserServiceImpl implements UserService {
     }
 
     await this.storage.set(
-      USER_STORAGE_KEYS.identity(tenantId, identity.provider, identity.provider_user_id),
-      newIdentity
+      USER_STORAGE_KEYS.identity(
+        tenantId,
+        identity.provider,
+        identity.provider_user_id,
+      ),
+      newIdentity,
     )
 
     if (this.d1Adapter) {
@@ -289,14 +376,25 @@ export class UserServiceImpl implements UserService {
     return newIdentity
   }
 
-  async unlinkIdentity(tenantId: string, userId: string, identityId: string): Promise<void> {
+  async unlinkIdentity(
+    tenantId: string,
+    userId: string,
+    identityId: string,
+  ): Promise<void> {
     if (this.d1Adapter) {
       const identity = await this.d1Adapter.getIdentity(tenantId, identityId)
       if (!identity || identity.user_id !== userId) {
-        throw new UserError("identity_not_found", `Identity '${identityId}' not found`)
+        throw new UserError(
+          "identity_not_found",
+          `Identity '${identityId}' not found`,
+        )
       }
       await this.storage.remove(
-        USER_STORAGE_KEYS.identity(tenantId, identity.provider, identity.provider_user_id)
+        USER_STORAGE_KEYS.identity(
+          tenantId,
+          identity.provider,
+          identity.provider_user_id,
+        ),
       )
       await this.d1Adapter.deleteIdentity(tenantId, identityId)
     }
@@ -307,7 +405,10 @@ export class UserServiceImpl implements UserService {
     if (!user) return
 
     const updatedUser: User = { ...user, last_login_at: Date.now() }
-    await this.storage.set(USER_STORAGE_KEYS.user(tenantId, userId), updatedUser)
+    await this.storage.set(
+      USER_STORAGE_KEYS.user(tenantId, userId),
+      updatedUser,
+    )
 
     if (this.d1Adapter) {
       await this.d1Adapter.updateLastLogin(tenantId, userId)

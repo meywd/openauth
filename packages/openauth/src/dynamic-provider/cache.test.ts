@@ -668,7 +668,10 @@ describe("Cache integration scenarios", () => {
 
     // Verify tenant2 is unaffected
     const tenant2Config = cache.get(providerCacheKey("tenant2", "google"))
-    expect(tenant2Config).toEqual({ clientId: "client3", clientSecret: "secret3" })
+    expect(tenant2Config).toEqual({
+      clientId: "client3",
+      clientSecret: "secret3",
+    })
   })
 
   test("handles high-volume concurrent access", () => {

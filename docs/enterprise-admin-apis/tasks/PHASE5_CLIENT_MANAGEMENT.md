@@ -155,7 +155,7 @@ export interface PaginatedClientsResponse {
 export class ClientError extends Error {
   constructor(
     public code: string,
-    message: string
+    message: string,
   ) {
     super(message)
     this.name = "ClientError"
@@ -178,7 +178,7 @@ export class InvalidGrantTypeError extends ClientError {
   constructor(grantType: string) {
     super(
       "invalid_grant_type",
-      `Invalid grant type: ${grantType}. Allowed: client_credentials, authorization_code, refresh_token`
+      `Invalid grant type: ${grantType}. Allowed: client_credentials, authorization_code, refresh_token`,
     )
   }
 }
@@ -187,7 +187,7 @@ export class InvalidScopeFormatError extends ClientError {
   constructor(scope: string) {
     super(
       "invalid_scope_format",
-      `Invalid scope format: ${scope}. Must match pattern: ^[a-zA-Z0-9_:.\\-]+$`
+      `Invalid scope format: ${scope}. Must match pattern: ^[a-zA-Z0-9_:.\\-]+$`,
     )
   }
 }
@@ -245,7 +245,7 @@ export async function hashClientSecret(secret: string): Promise<string> {
     secretBytes,
     "PBKDF2",
     false,
-    ["deriveBits"]
+    ["deriveBits"],
   )
 
   const derivedBits = await crypto.subtle.deriveBits(
@@ -256,7 +256,7 @@ export async function hashClientSecret(secret: string): Promise<string> {
       hash: "SHA-256",
     },
     keyMaterial,
-    256
+    256,
   )
 
   const hash = new Uint8Array(derivedBits)
@@ -270,7 +270,7 @@ export async function hashClientSecret(secret: string): Promise<string> {
  */
 export async function verifyClientSecret(
   secret: string,
-  storedHash: string
+  storedHash: string,
 ): Promise<boolean> {
   const parts = storedHash.split("$")
   if (parts.length !== 5 || parts[1] !== "pbkdf2-sha256") {
@@ -289,7 +289,7 @@ export async function verifyClientSecret(
     secretBytes,
     "PBKDF2",
     false,
-    ["deriveBits"]
+    ["deriveBits"],
   )
 
   const derivedBits = await crypto.subtle.deriveBits(
@@ -300,7 +300,7 @@ export async function verifyClientSecret(
       hash: "SHA-256",
     },
     keyMaterial,
-    256
+    256,
   )
 
   const actualHash = new Uint8Array(derivedBits)
@@ -377,7 +377,7 @@ export function validateClientName(name: string): void {
   }
   if (!NAME_PATTERN.test(name)) {
     throw new Error(
-      "Client name must contain only alphanumeric characters, spaces, hyphens, and underscores"
+      "Client name must contain only alphanumeric characters, spaces, hyphens, and underscores",
     )
   }
 }
@@ -442,9 +442,7 @@ export function validateRedirectUris(uris: string[]): void {
 /**
  * Validate metadata
  */
-export function validateMetadata(
-  metadata: Record<string, unknown>
-): void {
+export function validateMetadata(metadata: Record<string, unknown>): void {
   if (typeof metadata !== "object" || metadata === null) {
     throw new Error("metadata must be an object")
   }
@@ -471,10 +469,7 @@ import type {
   ListClientsParams,
   PaginatedClientsResponse,
 } from "./types.js"
-import {
-  ClientNotFoundError,
-  ClientNameConflictError,
-} from "./errors.js"
+import { ClientNotFoundError, ClientNameConflictError } from "./errors.js"
 import {
   generateClientId,
   generateClientSecret,
@@ -499,7 +494,7 @@ export class D1ClientAdapter {
    */
   async createClient(
     tenantId: string,
-    request: CreateClientRequest
+    request: CreateClientRequest,
   ): Promise<{ client: OAuthClientResponse; secret: string }> {
     validateClientName(request.name)
 
@@ -518,9 +513,7 @@ export class D1ClientAdapter {
 
     // Check for name conflict
     const existing = await this.db
-      .prepare(
-        "SELECT id FROM oauth_clients WHERE tenant_id = ? AND name = ?"
-      )
+      .prepare("SELECT id FROM oauth_clients WHERE tenant_id = ? AND name = ?")
       .bind(tenantId, request.name)
       .first()
 
@@ -538,7 +531,7 @@ export class D1ClientAdapter {
         `INSERT INTO oauth_clients (
           id, tenant_id, name, client_secret_hash, grant_types, scopes,
           redirect_uris, metadata, enabled, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -551,7 +544,7 @@ export class D1ClientAdapter {
         JSON.stringify(request.metadata || {}),
         request.enabled !== false ? 1 : 0,
         now,
-        now
+        now,
       )
       .run()
 
@@ -568,12 +561,10 @@ export class D1ClientAdapter {
    */
   async getClient(
     clientId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<OAuthClient | null> {
     const row = await this.db
-      .prepare(
-        "SELECT * FROM oauth_clients WHERE id = ? AND tenant_id = ?"
-      )
+      .prepare("SELECT * FROM oauth_clients WHERE id = ? AND tenant_id = ?")
       .bind(clientId, tenantId)
       .first<any>()
 
@@ -601,7 +592,7 @@ export class D1ClientAdapter {
    */
   async listClients(
     tenantId: string,
-    params: ListClientsParams = {}
+    params: ListClientsParams = {},
   ): Promise<PaginatedClientsResponse> {
     const limit = Math.min(params.limit || 20, 100)
     const cursor = params.cursor ? parseInt(params.cursor, 10) : 0
@@ -624,7 +615,9 @@ export class D1ClientAdapter {
 
     const rows = result.results || []
     const hasMore = rows.length > limit
-    const clients = rows.slice(0, limit).map((r) => this.toResponse(this.rowToClient(r)))
+    const clients = rows
+      .slice(0, limit)
+      .map((r) => this.toResponse(this.rowToClient(r)))
 
     return {
       clients,
@@ -639,7 +632,7 @@ export class D1ClientAdapter {
   async updateClient(
     clientId: string,
     tenantId: string,
-    updates: UpdateClientRequest
+    updates: UpdateClientRequest,
   ): Promise<OAuthClientResponse> {
     const existing = await this.getClient(clientId, tenantId)
     if (!existing) {
@@ -654,7 +647,7 @@ export class D1ClientAdapter {
       // Check for name conflict
       const conflict = await this.db
         .prepare(
-          "SELECT id FROM oauth_clients WHERE tenant_id = ? AND name = ? AND id != ?"
+          "SELECT id FROM oauth_clients WHERE tenant_id = ? AND name = ? AND id != ?",
         )
         .bind(tenantId, updates.name, clientId)
         .first()
@@ -698,7 +691,7 @@ export class D1ClientAdapter {
 
     await this.db
       .prepare(
-        `UPDATE oauth_clients SET ${setClauses.join(", ")} WHERE id = ? AND tenant_id = ?`
+        `UPDATE oauth_clients SET ${setClauses.join(", ")} WHERE id = ? AND tenant_id = ?`,
       )
       .bind(...values)
       .run()
@@ -732,7 +725,7 @@ export class D1ClientAdapter {
   async rotateSecret(
     clientId: string,
     tenantId: string,
-    gracePeriodSeconds = DEFAULT_GRACE_PERIOD
+    gracePeriodSeconds = DEFAULT_GRACE_PERIOD,
   ): Promise<{ client: OAuthClientResponse; secret: string }> {
     const existing = await this.getClient(clientId, tenantId)
     if (!existing) {
@@ -752,7 +745,7 @@ export class D1ClientAdapter {
           previous_secret_expires_at = ?,
           rotated_at = ?,
           updated_at = ?
-        WHERE id = ? AND tenant_id = ?`
+        WHERE id = ? AND tenant_id = ?`,
       )
       .bind(
         newSecretHash,
@@ -761,7 +754,7 @@ export class D1ClientAdapter {
         now,
         now,
         clientId,
-        tenantId
+        tenantId,
       )
       .run()
 
@@ -778,7 +771,7 @@ export class D1ClientAdapter {
    */
   async verifyCredentials(
     clientId: string,
-    clientSecret: string
+    clientSecret: string,
   ): Promise<OAuthClient | null> {
     const client = await this.getClientById(clientId)
     if (!client) return null
@@ -786,7 +779,7 @@ export class D1ClientAdapter {
     // Check current secret
     const currentValid = await verifyClientSecret(
       clientSecret,
-      client.client_secret_hash
+      client.client_secret_hash,
     )
     if (currentValid) return client
 
@@ -798,7 +791,7 @@ export class D1ClientAdapter {
     ) {
       const previousValid = await verifyClientSecret(
         clientSecret,
-        client.previous_secret_hash
+        client.previous_secret_hash,
       )
       if (previousValid) return client
     }
@@ -878,7 +871,7 @@ export class ClientService {
    */
   async createClient(
     tenantId: string,
-    request: CreateClientRequest
+    request: CreateClientRequest,
   ): Promise<{ client: OAuthClientResponse; secret: string }> {
     return this.adapter.createClient(tenantId, request)
   }
@@ -888,7 +881,7 @@ export class ClientService {
    */
   async getClient(
     clientId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<OAuthClientResponse | null> {
     const client = await this.adapter.getClient(clientId, tenantId)
     if (!client) return null
@@ -900,7 +893,7 @@ export class ClientService {
    */
   async listClients(
     tenantId: string,
-    params?: ListClientsParams
+    params?: ListClientsParams,
   ): Promise<PaginatedClientsResponse> {
     return this.adapter.listClients(tenantId, params)
   }
@@ -911,7 +904,7 @@ export class ClientService {
   async updateClient(
     clientId: string,
     tenantId: string,
-    updates: UpdateClientRequest
+    updates: UpdateClientRequest,
   ): Promise<OAuthClientResponse> {
     return this.adapter.updateClient(clientId, tenantId, updates)
   }
@@ -929,7 +922,7 @@ export class ClientService {
   async rotateSecret(
     clientId: string,
     tenantId: string,
-    gracePeriodSeconds?: number
+    gracePeriodSeconds?: number,
   ): Promise<{ client: OAuthClientResponse; secret: string }> {
     return this.adapter.rotateSecret(clientId, tenantId, gracePeriodSeconds)
   }
@@ -939,7 +932,7 @@ export class ClientService {
    */
   async verifyCredentials(
     clientId: string,
-    clientSecret: string
+    clientSecret: string,
   ): Promise<OAuthClientResponse | null> {
     const client = await this.adapter.verifyCredentials(clientId, clientSecret)
     if (!client) return null
@@ -1008,7 +1001,8 @@ export function clientAdminRoutes(db: D1Database) {
     const result = await service.listClients(tenantId, {
       cursor,
       limit: limit ? parseInt(limit, 10) : undefined,
-      enabled: enabled === "true" ? true : enabled === "false" ? false : undefined,
+      enabled:
+        enabled === "true" ? true : enabled === "false" ? false : undefined,
     })
 
     return c.json(result)
@@ -1029,8 +1023,11 @@ export function clientAdminRoutes(db: D1Database) {
 
     if (!body.name || typeof body.name !== "string") {
       return c.json(
-        { error: "Bad Request", message: "name is required and must be a string" },
-        400
+        {
+          error: "Bad Request",
+          message: "name is required and must be a string",
+        },
+        400,
       )
     }
 
@@ -1049,7 +1046,7 @@ export function clientAdminRoutes(db: D1Database) {
           ...client,
           client_secret: secret,
         },
-        201
+        201,
       )
     } catch (error) {
       return handleClientError(c, error)
@@ -1135,7 +1132,7 @@ export function clientAdminRoutes(db: D1Database) {
       const { client, secret } = await service.rotateSecret(
         clientId,
         tenantId,
-        gracePeriod
+        gracePeriod,
       )
 
       return c.json({
@@ -1197,29 +1194,32 @@ export {
 
 ## API Endpoints
 
-| Method | Path | Description | Scope |
-|--------|------|-------------|-------|
-| GET | /clients | List clients (paginated) | clients:read |
-| POST | /clients | Create new client | clients:write |
-| GET | /clients/:id | Get client by ID | clients:read |
-| PATCH | /clients/:id | Update client | clients:write |
-| DELETE | /clients/:id | Delete client | clients:delete |
-| POST | /clients/:id/rotate | Rotate secret | clients:write |
+| Method | Path                | Description              | Scope          |
+| ------ | ------------------- | ------------------------ | -------------- |
+| GET    | /clients            | List clients (paginated) | clients:read   |
+| POST   | /clients            | Create new client        | clients:write  |
+| GET    | /clients/:id        | Get client by ID         | clients:read   |
+| PATCH  | /clients/:id        | Update client            | clients:write  |
+| DELETE | /clients/:id        | Delete client            | clients:delete |
+| POST   | /clients/:id/rotate | Rotate secret            | clients:write  |
 
 ## Security Features
 
 ### Secret Generation
+
 - 256-bit entropy (32 bytes)
 - URL-safe Base64 encoding
 - Cryptographically secure random generation
 
 ### Secret Hashing
+
 - PBKDF2-SHA256
 - 100,000 iterations
 - 128-bit salt
 - Constant-time comparison
 
 ### Secret Rotation
+
 - Grace period for old secret (default 1 hour)
 - Both secrets valid during grace period
 - Automatic expiration of old secret
@@ -1241,6 +1241,7 @@ Authorization: Bearer <m2m_token>
 ```
 
 Response (201):
+
 ```json
 {
   "id": "client_abc123xyz",
@@ -1270,6 +1271,7 @@ Authorization: Bearer <m2m_token>
 ```
 
 Response:
+
 ```json
 {
   "id": "client_abc123xyz",
@@ -1337,7 +1339,9 @@ describe("hashClientSecret / verifyClientSecret", () => {
 
   test("hash format is correct", async () => {
     const hash = await hashClientSecret("test")
-    expect(hash).toMatch(/^\$pbkdf2-sha256\$\d+\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/)
+    expect(hash).toMatch(
+      /^\$pbkdf2-sha256\$\d+\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/,
+    )
   })
 })
 ```
@@ -1391,14 +1395,14 @@ describe("Client Management API", () => {
 
 ## Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| client_not_found | 404 | Client does not exist |
-| client_name_conflict | 409 | Client name already exists |
-| invalid_grant_type | 400 | Invalid grant type |
-| invalid_scope_format | 400 | Scope format invalid |
-| invalid_redirect_uri | 400 | Redirect URI invalid |
-| client_disabled | 401 | Client is disabled |
+| Code                 | HTTP Status | Description                |
+| -------------------- | ----------- | -------------------------- |
+| client_not_found     | 404         | Client does not exist      |
+| client_name_conflict | 409         | Client name already exists |
+| invalid_grant_type   | 400         | Invalid grant type         |
+| invalid_scope_format | 400         | Scope format invalid       |
+| invalid_redirect_uri | 400         | Redirect URI invalid       |
+| client_disabled      | 401         | Client is disabled         |
 
 ## Checklist
 

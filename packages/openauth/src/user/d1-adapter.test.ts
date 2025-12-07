@@ -21,19 +21,31 @@ function createMockD1Database() {
           return statement
         },
         first: async () => {
-          const record = { query, bindings: statement.bindings, firstResult: null }
+          const record = {
+            query,
+            bindings: statement.bindings,
+            firstResult: null,
+          }
           statements.push(record)
           return record.firstResult
         },
         run: async () => {
-          const record = { query, bindings: statement.bindings, runResult: { success: true, meta: { changes: 0 } } }
+          const record = {
+            query,
+            bindings: statement.bindings,
+            runResult: { success: true, meta: { changes: 0 } },
+          }
           statements.push(record)
           return record.runResult
         },
         all: async () => {
           const record = { query, bindings: statement.bindings, allResults: [] }
           statements.push(record)
-          return { results: record.allResults, success: true, meta: { changes: 0 } }
+          return {
+            results: record.allResults,
+            success: true,
+            meta: { changes: 0 },
+          }
         },
       }
       return statement
@@ -170,23 +182,30 @@ describe("D1UserAdapter", () => {
         deleted_at: null,
       }
 
-      mockDb.prepare = (query: string) => ({
-        bindings: [] as any[],
-        bind: function(...values: any[]) {
-          this.bindings = values
-          mockDb._statements.push({ query, bindings: this.bindings })
-          return this
-        },
-        first: async () => userRow,
-        run: async () => ({ success: true, meta: { changes: 0 } }),
-        all: async () => ({ results: [], success: true, meta: { changes: 0 } }),
-      }) as any
+      mockDb.prepare = (query: string) =>
+        ({
+          bindings: [] as any[],
+          bind: function (...values: any[]) {
+            this.bindings = values
+            mockDb._statements.push({ query, bindings: this.bindings })
+            return this
+          },
+          first: async () => userRow,
+          run: async () => ({ success: true, meta: { changes: 0 } }),
+          all: async () => ({
+            results: [],
+            success: true,
+            meta: { changes: 0 },
+          }),
+        }) as any
 
       const user = await adapter.getUser(tenantId, "usr_123")
 
       const statement = mockDb._statements[0]
       expect(statement.query).toContain("SELECT * FROM users")
-      expect(statement.query).toContain("WHERE tenant_id = ? AND id = ? AND deleted_at IS NULL")
+      expect(statement.query).toContain(
+        "WHERE tenant_id = ? AND id = ? AND deleted_at IS NULL",
+      )
       expect(statement.bindings).toEqual([tenantId, "usr_123"])
 
       expect(user).toEqual({
@@ -217,9 +236,10 @@ describe("D1UserAdapter", () => {
         deleted_at: null,
       }
 
-      mockDb.prepare = () => ({
-        bind: () => ({ first: async () => userRow }) as any,
-      }) as any
+      mockDb.prepare = () =>
+        ({
+          bind: () => ({ first: async () => userRow }) as any,
+        }) as any
 
       const user = await adapter.getUser(tenantId, "usr_123")
 
@@ -240,9 +260,10 @@ describe("D1UserAdapter", () => {
         deleted_at: null,
       }
 
-      mockDb.prepare = () => ({
-        bind: () => ({ first: async () => userRow }) as any,
-      }) as any
+      mockDb.prepare = () =>
+        ({
+          bind: () => ({ first: async () => userRow }) as any,
+        }) as any
 
       const user = await adapter.getUser(tenantId, "usr_123")
 
@@ -250,9 +271,10 @@ describe("D1UserAdapter", () => {
     })
 
     test("returns null when user not found", async () => {
-      mockDb.prepare = () => ({
-        bind: () => ({ first: async () => null }) as any,
-      }) as any
+      mockDb.prepare = () =>
+        ({
+          bind: () => ({ first: async () => null }) as any,
+        }) as any
 
       const user = await adapter.getUser(tenantId, "usr_nonexistent")
 
@@ -286,7 +308,9 @@ describe("D1UserAdapter", () => {
 
       const statement = mockDb._statements[0]
       expect(statement.query).toContain("UPDATE users")
-      expect(statement.query).toContain("SET email = ?, name = ?, metadata = ?, status = ?")
+      expect(statement.query).toContain(
+        "SET email = ?, name = ?, metadata = ?, status = ?",
+      )
       expect(statement.query).toContain("WHERE tenant_id = ? AND id = ?")
       expect(statement.bindings).toEqual([
         user.email,
@@ -328,8 +352,15 @@ describe("D1UserAdapter", () => {
 
       const statement = mockDb._statements[0]
       expect(statement.query).toContain("UPDATE users")
-      expect(statement.query).toContain("SET status = 'deleted', deleted_at = ?, updated_at = ?")
-      expect(statement.bindings).toEqual([deletedAt, deletedAt, tenantId, userId])
+      expect(statement.query).toContain(
+        "SET status = 'deleted', deleted_at = ?, updated_at = ?",
+      )
+      expect(statement.bindings).toEqual([
+        deletedAt,
+        deletedAt,
+        tenantId,
+        userId,
+      ])
     })
   })
 
@@ -384,7 +415,14 @@ describe("D1UserAdapter", () => {
         if (callCount === 1) {
           // Main query
           return {
-            bind: () => ({ all: async () => ({ results: userRows, success: true, meta: { changes: 0 } }) }) as any,
+            bind: () =>
+              ({
+                all: async () => ({
+                  results: userRows,
+                  success: true,
+                  meta: { changes: 0 },
+                }),
+              }) as any,
           } as any
         } else {
           // Count query
@@ -409,7 +447,11 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = (query: string) => {
         capturedQueries.push(query)
         return {
-          bind: () => ({ all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }) as any,
+          bind: () =>
+            ({
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }) as any,
         } as any
       }
 
@@ -426,9 +468,12 @@ describe("D1UserAdapter", () => {
         callCount++
         capturedQueries.push(query)
         return {
-          bind: function(...values: any[]) {
+          bind: function (...values: any[]) {
             if (callCount === 1) capturedBindings = values
-            return { all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }
+            return {
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }
           },
         } as any
       }
@@ -445,16 +490,21 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = () => {
         callCount++
         return {
-          bind: function(...values: any[]) {
+          bind: function (...values: any[]) {
             if (callCount === 1) capturedBindings = values
-            return { all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }
+            return {
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }
           },
         } as any
       }
 
       await adapter.listUsers(tenantId, { email: "TEST@EXAMPLE.COM" })
 
-      expect(capturedBindings.some((b) => b === "%test@example.com%")).toBe(true)
+      expect(capturedBindings.some((b) => b === "%test@example.com%")).toBe(
+        true,
+      )
     })
 
     test("applies limit parameter", async () => {
@@ -465,9 +515,12 @@ describe("D1UserAdapter", () => {
         callCount++
         capturedQueries.push(query)
         return {
-          bind: function(...values: any[]) {
+          bind: function (...values: any[]) {
             if (callCount === 1) capturedBindings = values
-            return { all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }
+            return {
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }
           },
         } as any
       }
@@ -484,9 +537,12 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = () => {
         callCount++
         return {
-          bind: function(...values: any[]) {
+          bind: function (...values: any[]) {
             if (callCount === 1) capturedBindings = values
-            return { all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }
+            return {
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }
           },
         } as any
       }
@@ -501,7 +557,11 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = (query: string) => {
         capturedQueries.push(query)
         return {
-          bind: () => ({ all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }) as any,
+          bind: () =>
+            ({
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }) as any,
         } as any
       }
 
@@ -515,7 +575,11 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = (query: string) => {
         capturedQueries.push(query)
         return {
-          bind: () => ({ all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }) as any,
+          bind: () =>
+            ({
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }) as any,
         } as any
       }
 
@@ -529,7 +593,11 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = (query: string) => {
         capturedQueries.push(query)
         return {
-          bind: () => ({ all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }) as any,
+          bind: () =>
+            ({
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }) as any,
         } as any
       }
 
@@ -543,11 +611,17 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = (query: string) => {
         capturedQueries.push(query)
         return {
-          bind: () => ({ all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }) as any,
+          bind: () =>
+            ({
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }) as any,
         } as any
       }
 
-      await adapter.listUsers(tenantId, { sort_by: "invalid_column; DROP TABLE users" as any })
+      await adapter.listUsers(tenantId, {
+        sort_by: "invalid_column; DROP TABLE users" as any,
+      })
 
       // Should default to created_at
       expect(capturedQueries[0]).toContain("ORDER BY created_at DESC")
@@ -570,7 +644,8 @@ describe("D1UserAdapter", () => {
           // Main query
           mainQueryCaptured = query
           return {
-            bind: () => ({ all: async () => ({ results: [], success: true }) }) as any,
+            bind: () =>
+              ({ all: async () => ({ results: [], success: true }) }) as any,
           } as any
         } else {
           // Count query
@@ -599,7 +674,8 @@ describe("D1UserAdapter", () => {
         } else if (callCount === 2) {
           mainQueryCaptured = query
           return {
-            bind: () => ({ all: async () => ({ results: [], success: true }) }) as any,
+            bind: () =>
+              ({ all: async () => ({ results: [], success: true }) }) as any,
           } as any
         } else {
           return {
@@ -636,7 +712,10 @@ describe("D1UserAdapter", () => {
         callCount++
         if (callCount === 1) {
           return {
-            bind: () => ({ all: async () => ({ results: userRows, success: true }) }) as any,
+            bind: () =>
+              ({
+                all: async () => ({ results: userRows, success: true }),
+              }) as any,
           } as any
         } else {
           return {
@@ -671,7 +750,10 @@ describe("D1UserAdapter", () => {
         callCount++
         if (callCount === 1) {
           return {
-            bind: () => ({ all: async () => ({ results: userRows, success: true }) }) as any,
+            bind: () =>
+              ({
+                all: async () => ({ results: userRows, success: true }),
+              }) as any,
           } as any
         } else {
           return {
@@ -692,7 +774,11 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = (query: string) => {
         capturedQuery = query
         return {
-          bind: () => ({ all: async () => ({ results: [], success: true }), first: async () => ({ count: 0 }) }) as any,
+          bind: () =>
+            ({
+              all: async () => ({ results: [], success: true }),
+              first: async () => ({ count: 0 }),
+            }) as any,
         } as any
       }
 
@@ -707,7 +793,8 @@ describe("D1UserAdapter", () => {
         callCount++
         if (callCount === 1) {
           return {
-            bind: () => ({ all: async () => ({ results: [], success: true }) }) as any,
+            bind: () =>
+              ({ all: async () => ({ results: [], success: true }) }) as any,
           } as any
         } else {
           return {
@@ -729,9 +816,11 @@ describe("D1UserAdapter", () => {
       mockDb.prepare = (query: string) => {
         capturedQuery = query
         return {
-          bind: function(...values: any[]) {
+          bind: function (...values: any[]) {
             capturedBindings = values
-            return { run: async () => ({ success: true, meta: { changes: 5 } }) }
+            return {
+              run: async () => ({ success: true, meta: { changes: 5 } }),
+            }
           },
         } as any
       }
@@ -741,7 +830,9 @@ describe("D1UserAdapter", () => {
       expect(result.deletedCount).toBe(5)
       expect(capturedQuery).toContain("DELETE FROM account_sessions")
       expect(capturedQuery).toContain("WHERE user_id = ?")
-      expect(capturedQuery).toContain("SELECT id FROM browser_sessions WHERE tenant_id = ?")
+      expect(capturedQuery).toContain(
+        "SELECT id FROM browser_sessions WHERE tenant_id = ?",
+      )
       expect(capturedBindings).toEqual(["usr_123", tenantId])
     })
   })
@@ -764,7 +855,7 @@ describe("D1UserAdapter", () => {
         const statement = mockDb._statements[0]
         expect(statement.query).toContain("INSERT INTO user_identities")
         expect(statement.query).toContain(
-          "id, user_id, tenant_id, provider, provider_user_id, provider_data, created_at"
+          "id, user_id, tenant_id, provider, provider_user_id, provider_data, created_at",
         )
         expect(statement.bindings).toEqual([
           identity.id,
@@ -791,7 +882,9 @@ describe("D1UserAdapter", () => {
         await adapter.createIdentity(identity)
 
         const statement = mockDb._statements[0]
-        expect(statement.bindings[5]).toBe(JSON.stringify(identity.provider_data))
+        expect(statement.bindings[5]).toBe(
+          JSON.stringify(identity.provider_data),
+        )
       })
 
       test("stores null provider_data as null", async () => {
@@ -852,7 +945,7 @@ describe("D1UserAdapter", () => {
         mockDb.prepare = (query: string) => {
           capturedQuery = query
           return {
-            bind: function(...values: any[]) {
+            bind: function (...values: any[]) {
               capturedBindings = values
               return { first: async () => identityRow }
             },
@@ -887,9 +980,10 @@ describe("D1UserAdapter", () => {
           created_at: 1234567890,
         }
 
-        mockDb.prepare = () => ({
-          bind: () => ({ first: async () => identityRow }) as any,
-        }) as any
+        mockDb.prepare = () =>
+          ({
+            bind: () => ({ first: async () => identityRow }) as any,
+          }) as any
 
         const identity = await adapter.getIdentity(tenantId, "idt_123")
 
@@ -907,9 +1001,10 @@ describe("D1UserAdapter", () => {
           created_at: 1234567890,
         }
 
-        mockDb.prepare = () => ({
-          bind: () => ({ first: async () => identityRow }) as any,
-        }) as any
+        mockDb.prepare = () =>
+          ({
+            bind: () => ({ first: async () => identityRow }) as any,
+          }) as any
 
         const identity = await adapter.getIdentity(tenantId, "idt_123")
 
@@ -917,9 +1012,10 @@ describe("D1UserAdapter", () => {
       })
 
       test("returns null when identity not found", async () => {
-        mockDb.prepare = () => ({
-          bind: () => ({ first: async () => null }) as any,
-        }) as any
+        mockDb.prepare = () =>
+          ({
+            bind: () => ({ first: async () => null }) as any,
+          }) as any
 
         const identity = await adapter.getIdentity(tenantId, "idt_nonexistent")
 
@@ -954,7 +1050,10 @@ describe("D1UserAdapter", () => {
         mockDb.prepare = (query: string) => {
           capturedQuery = query
           return {
-            bind: () => ({ all: async () => ({ results: identityRows, success: true }) }) as any,
+            bind: () =>
+              ({
+                all: async () => ({ results: identityRows, success: true }),
+              }) as any,
           } as any
         }
 
@@ -971,9 +1070,11 @@ describe("D1UserAdapter", () => {
       })
 
       test("returns empty array when no identities found", async () => {
-        mockDb.prepare = () => ({
-          bind: () => ({ all: async () => ({ results: [], success: true }) }) as any,
-        }) as any
+        mockDb.prepare = () =>
+          ({
+            bind: () =>
+              ({ all: async () => ({ results: [], success: true }) }) as any,
+          }) as any
 
         const identities = await adapter.getUserIdentities(tenantId, "usr_123")
 
@@ -988,9 +1089,11 @@ describe("D1UserAdapter", () => {
         mockDb.prepare = (query: string) => {
           capturedQuery = query
           return {
-            bind: function(...values: any[]) {
+            bind: function (...values: any[]) {
               capturedBindings = values
-              return { run: async () => ({ success: true, meta: { changes: 1 } }) }
+              return {
+                run: async () => ({ success: true, meta: { changes: 1 } }),
+              }
             },
           } as any
         }

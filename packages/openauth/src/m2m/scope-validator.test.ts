@@ -66,7 +66,10 @@ describe("validateScopes", () => {
 
   describe("when valid scopes requested", () => {
     test("grants all requested scopes when they are allowed", () => {
-      const result = validateScopes(["read", "write"], ["read", "write", "delete"])
+      const result = validateScopes(
+        ["read", "write"],
+        ["read", "write", "delete"],
+      )
       expect(result).toEqual({
         valid: true,
         granted: ["read", "write"],
@@ -126,7 +129,7 @@ describe("validateScopes", () => {
     test("grants valid and denies invalid scopes", () => {
       const result = validateScopes(
         ["read", "admin", "write"],
-        ["read", "write", "delete"]
+        ["read", "write", "delete"],
       )
       expect(result).toEqual({
         valid: false,
@@ -138,7 +141,7 @@ describe("validateScopes", () => {
     test("preserves request order in granted scopes", () => {
       const result = validateScopes(
         ["write", "read", "delete"],
-        ["read", "write", "delete"]
+        ["read", "write", "delete"],
       )
       expect(result).toEqual({
         valid: true,
@@ -150,7 +153,7 @@ describe("validateScopes", () => {
     test("preserves request order in denied scopes", () => {
       const result = validateScopes(
         ["admin", "read", "superuser"],
-        ["read", "write"]
+        ["read", "write"],
       )
       expect(result).toEqual({
         valid: false,
@@ -162,7 +165,10 @@ describe("validateScopes", () => {
 
   describe("edge cases", () => {
     test("handles duplicate requested scopes", () => {
-      const result = validateScopes(["read", "read", "write"], ["read", "write"])
+      const result = validateScopes(
+        ["read", "read", "write"],
+        ["read", "write"],
+      )
       expect(result).toEqual({
         valid: true,
         granted: ["read", "read", "write"],
@@ -191,7 +197,7 @@ describe("validateScopes", () => {
     test("handles complex scope names", () => {
       const result = validateScopes(
         ["user:read", "user:write"],
-        ["user:read", "user:write", "admin:delete"]
+        ["user:read", "user:write", "admin:delete"],
       )
       expect(result).toEqual({
         valid: true,
