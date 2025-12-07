@@ -14,6 +14,7 @@
 
 import { execSync, spawnSync } from "child_process"
 import { readFileSync, readdirSync, existsSync } from "fs"
+import { createHash } from "crypto"
 import { dirname, join } from "path"
 import { fileURLToPath } from "url"
 
@@ -22,6 +23,9 @@ const __dirname = dirname(__filename)
 
 // Migrations are in src/migrations relative to package root
 const migrationsDir = join(__dirname, "..", "src", "migrations")
+
+// Migration tracking table name
+const MIGRATIONS_TABLE = "_openauth_migrations"
 
 /**
  * Strip JSON comments (single-line and multi-line) for JSONC support
@@ -123,6 +127,117 @@ function extractDbNameFromJson(config: any): string | null {
   return null
 }
 
+/**
+ * Calculate checksum of file content
+ */
+function calculateChecksum(content: string): string {
+  return createHash("sha256").update(content).digest("hex").slice(0, 16)
+}
+
+/**
+ * Build wrangler command arguments
+ */
+function buildWranglerArgs(
+  dbName: string,
+  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
+): string[] {
+  const args = ["d1", "execute", dbName]
+  if (options.isLocal) args.push("--local")
+  if (options.isRemote) args.push("--remote")
+  if (options.configFile) args.push("--config", options.configFile)
+  return args
+}
+
+/**
+ * Execute a SQL command and return the output
+ */
+function executeSqlCommand(
+  dbName: string,
+  sql: string,
+  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
+): { success: boolean; output: string } {
+  const args = buildWranglerArgs(dbName, options)
+  args.push("--command", sql)
+
+  const result = spawnSync("wrangler", args, {
+    encoding: "utf-8",
+    shell: true,
+    stdio: ["pipe", "pipe", "pipe"],
+  })
+
+  return {
+    success: result.status === 0,
+    output: result.stdout || result.stderr || "",
+  }
+}
+
+/**
+ * Execute a SQL file
+ */
+function executeSqlFile(
+  dbName: string,
+  filePath: string,
+  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
+): { success: boolean } {
+  const args = buildWranglerArgs(dbName, options)
+  args.push("--file", filePath)
+
+  const result = spawnSync("wrangler", args, {
+    stdio: "inherit",
+    shell: true,
+  })
+
+  return { success: result.status === 0 }
+}
+
+/**
+ * Get list of already applied migrations from database
+ */
+function getAppliedMigrations(
+  dbName: string,
+  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
+): Set<string> {
+  const sql = `SELECT name FROM ${MIGRATIONS_TABLE}`
+  const result = executeSqlCommand(dbName, sql, options)
+
+  if (!result.success) {
+    // Table might not exist yet, return empty set
+    return new Set()
+  }
+
+  // Parse output - wrangler returns JSON results
+  const applied = new Set<string>()
+  try {
+    // Try to extract migration names from output
+    const matches = result.output.match(/"name":\s*"([^"]+)"/g)
+    if (matches) {
+      for (const match of matches) {
+        const name = match.match(/"name":\s*"([^"]+)"/)?.[1]
+        if (name) applied.add(name)
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
+  return applied
+}
+
+/**
+ * Record a migration as applied
+ */
+function recordMigration(
+  dbName: string,
+  migrationName: string,
+  checksum: string,
+  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
+): boolean {
+  const now = Date.now()
+  const sql = `INSERT OR REPLACE INTO ${MIGRATIONS_TABLE} (name, applied_at, checksum) VALUES ('${migrationName}', ${now}, '${checksum}')`
+  const result = executeSqlCommand(dbName, sql, options)
+  return result.success
+}
+
 function printHelp() {
   console.log(`
 OpenAuth CLI
@@ -135,6 +250,8 @@ Options:
   --local              Apply to local D1 database (for development)
   --remote             Apply to remote D1 database (production)
   --config, -c <file>  Use a specific wrangler config file
+  --mark-applied       Mark all migrations as applied without running them
+                       (useful for existing databases that were migrated before tracking)
 
 Examples:
   openauth migrate                       # Auto-detect from wrangler config
@@ -142,8 +259,10 @@ Examples:
   openauth migrate --remote              # Remote database (production)
   openauth migrate my-auth-db --remote   # Specify database, remote
   openauth migrate -c wrangler.qa.json --remote
+  openauth migrate --mark-applied        # Mark existing migrations as applied
 
 The migrate command executes OpenAuth SQL migrations against your D1 database.
+It tracks applied migrations to prevent duplicate execution.
 `)
 }
 
@@ -152,6 +271,7 @@ function migrate(args: string[]) {
   let dbName: string | undefined
   let isLocal = false
   let isRemote = false
+  let markApplied = false
   let configFile: string | undefined
 
   for (let i = 0; i < args.length; i++) {
@@ -160,6 +280,8 @@ function migrate(args: string[]) {
       isLocal = true
     } else if (arg === "--remote") {
       isRemote = true
+    } else if (arg === "--mark-applied") {
+      markApplied = true
     } else if (arg === "--config" || arg === "-c") {
       configFile = args[++i]
       if (!configFile) {
@@ -216,38 +338,89 @@ function migrate(args: string[]) {
     process.exit(1)
   }
 
-  console.log(
-    `Applying ${sqlFiles.length} OpenAuth migrations to ${dbName}${isLocal ? " (local)" : ""}...`,
-  )
+  const options = { isLocal, isRemote, configFile }
 
-  // Execute each SQL file
-  for (const file of sqlFiles) {
-    const filePath = join(migrationsDir, file)
-    console.log(`  Applying ${file}...`)
-
-    const wranglerArgs = ["d1", "execute", dbName, "--file", filePath]
-    if (isLocal) {
-      wranglerArgs.push("--local")
-    }
-    if (isRemote) {
-      wranglerArgs.push("--remote")
-    }
-    if (configFile) {
-      wranglerArgs.push("--config", configFile)
-    }
-
-    const result = spawnSync("wrangler", wranglerArgs, {
-      stdio: "inherit",
-      shell: true,
-    })
-
-    if (result.status !== 0) {
-      console.error(`Error applying ${file}`)
-      process.exit(result.status || 1)
+  // First, ensure the tracking table exists (run 000 migration)
+  const trackingMigration = sqlFiles.find((f) => f.startsWith("000_"))
+  if (trackingMigration) {
+    const trackingPath = join(migrationsDir, trackingMigration)
+    console.log(`Ensuring migration tracking table exists...`)
+    const trackingResult = executeSqlFile(dbName, trackingPath, options)
+    if (!trackingResult.success) {
+      console.error("Error: Failed to create migration tracking table")
+      process.exit(1)
     }
   }
 
-  console.log("Migrations applied successfully!")
+  // Get already applied migrations
+  const appliedMigrations = getAppliedMigrations(dbName, options)
+  if (appliedMigrations.size > 0) {
+    console.log(`Found ${appliedMigrations.size} previously applied migrations`)
+  }
+
+  // Filter out already applied migrations (except 000 which is always safe)
+  const pendingMigrations = sqlFiles.filter(
+    (f) => !appliedMigrations.has(f) && !f.startsWith("000_"),
+  )
+
+  // Handle --mark-applied flag
+  if (markApplied) {
+    console.log(
+      `Marking ${pendingMigrations.length} migration(s) as applied (without executing)...`,
+    )
+    for (const file of pendingMigrations) {
+      const filePath = join(migrationsDir, file)
+      const content = readFileSync(filePath, "utf-8")
+      const checksum = calculateChecksum(content)
+      const recorded = recordMigration(dbName, file, checksum, options)
+      if (recorded) {
+        console.log(`  Marked ${file} as applied`)
+      } else {
+        console.warn(`  Warning: Could not mark ${file} as applied`)
+      }
+    }
+    console.log("Done! All migrations marked as applied.")
+    return
+  }
+
+  if (pendingMigrations.length === 0) {
+    console.log("All migrations are already applied. Database is up to date.")
+    return
+  }
+
+  console.log(
+    `Applying ${pendingMigrations.length} new migration(s) to ${dbName}${isLocal ? " (local)" : isRemote ? " (remote)" : ""}...`,
+  )
+
+  // Execute each pending SQL file
+  let applied = 0
+  for (const file of pendingMigrations) {
+    const filePath = join(migrationsDir, file)
+    const content = readFileSync(filePath, "utf-8")
+    const checksum = calculateChecksum(content)
+
+    console.log(`  Applying ${file}...`)
+
+    const result = executeSqlFile(dbName, filePath, options)
+
+    if (!result.success) {
+      console.error(`Error applying ${file}`)
+      console.error(
+        `${applied} migration(s) were applied before the error occurred.`,
+      )
+      process.exit(1)
+    }
+
+    // Record the migration as applied
+    const recorded = recordMigration(dbName, file, checksum, options)
+    if (!recorded) {
+      console.warn(`  Warning: Could not record ${file} in tracking table`)
+    }
+
+    applied++
+  }
+
+  console.log(`Successfully applied ${applied} migration(s)!`)
 }
 
 // Parse command line arguments

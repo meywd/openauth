@@ -23,11 +23,11 @@ function createMockStorage(): StorageAdapter {
       const stringKey = key.join("::")
       store.delete(stringKey)
     }),
-    scan: mock(async function* (prefix: string[]) {
+    scan: mock(async function* (prefix: string[]): AsyncIterable<[string[], any]> {
       const prefixStr = prefix.join("::")
       for (const [key, value] of store.entries()) {
         if (key.startsWith(prefixStr)) {
-          yield [key.split("::"), value]
+          yield [key.split("::"), value] as [string[], any]
         }
       }
     }),

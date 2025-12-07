@@ -17,8 +17,25 @@ npx openauth migrate my-auth-db
 # Local development
 npx openauth migrate --local
 
+# Remote (production) database
+npx openauth migrate --remote
+
 # Combine options
 npx openauth migrate my-auth-db --local
+```
+
+## Migration Tracking
+
+The CLI tracks applied migrations in a `_openauth_migrations` table. This allows:
+- **Safe re-runs** - Running migrate multiple times won't cause errors
+- **Incremental updates** - Only new migrations are applied
+- **Audit trail** - Track when each migration was applied
+
+```bash
+# If you have an existing database that was migrated before tracking existed:
+npx openauth migrate --mark-applied
+
+# This marks all migrations as "applied" without executing them
 ```
 
 ## Build Integration
@@ -78,6 +95,7 @@ The CLI executes these SQL files in order:
 
 | File | Description |
 |------|-------------|
+| `000_migration_tracking.sql` | Migration tracking table (auto-created) |
 | `001_oauth_clients.sql` | OAuth client credentials table |
 | `002_add_tenant_support.sql` | Tenant management tables |
 | `003_session_management.sql` | Session storage tables |
@@ -262,4 +280,11 @@ Either specify the database name or ensure your wrangler config has a D1 databas
 
 ### Migration errors
 
-Migrations are idempotent - running them multiple times is safe. If you see errors about existing tables, they can usually be ignored.
+With migration tracking enabled, re-running migrations is safe. If you encounter "duplicate column" errors on an existing database:
+
+```bash
+# Mark all migrations as applied without re-executing them
+npx openauth migrate --mark-applied --local
+```
+
+This is useful when upgrading from an older version that didn't track migrations.
