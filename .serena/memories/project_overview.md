@@ -1,9 +1,11 @@
 # OpenAuth Project Overview
 
 ## Purpose
+
 OpenAuth is an open-source authentication library that provides OAuth 2.0/OIDC-compliant identity services. It supports multiple identity providers, multi-tenant architecture, and enterprise features including RBAC, session management, and audit logging.
 
 ## Tech Stack
+
 - **Runtime**: Bun (Node.js compatible)
 - **Language**: TypeScript
 - **Web Framework**: Hono (lightweight web framework)
@@ -13,6 +15,7 @@ OpenAuth is an open-source authentication library that provides OAuth 2.0/OIDC-c
 - **Storage**: Supports DynamoDB, Cloudflare D1/KV, in-memory
 
 ## Project Structure
+
 ```
 packages/openauth/
   src/
@@ -29,6 +32,7 @@ packages/openauth/
 ```
 
 ## Key Components
+
 1. **Providers**: Factory functions returning `Provider` interface with `init()` method
 2. **Issuer**: Main Hono app handling OAuth flows (/authorize, /token, etc.)
 3. **Enterprise Issuer**: Multi-tenant wrapper with sessions, RBAC, tenant resolution
