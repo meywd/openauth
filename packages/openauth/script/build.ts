@@ -11,6 +11,9 @@ await Bun.build({
   entrypoints: ["./bin/cli.ts"],
 })
 
+// Format CLI output to match project standards (no semicolons)
+await $`npx prettier --write bin/cli.js`
+
 const files = new Glob("./src/**/*.{ts,tsx}").scan()
 for await (const file of files) {
   await Bun.build({
