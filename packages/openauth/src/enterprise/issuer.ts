@@ -381,11 +381,33 @@ export function createMultiTenantIssuer<
               typeof properties === "object" && properties !== null
                 ? properties
                 : {}
+
+            // Merge roles from both sources:
+            // - baseProperties.roles: from app's onSuccess (e.g., database lookup)
+            // - rbacClaims.roles: from RBAC service (if userID was available)
+            // This ensures app-provided roles aren't overwritten by empty RBAC claims
+            const baseRoles = Array.isArray((baseProperties as any).roles)
+              ? (baseProperties as any).roles
+              : []
+            const basePermissions = Array.isArray(
+              (baseProperties as any).permissions,
+            )
+              ? (baseProperties as any).permissions
+              : []
+
+            // Combine and deduplicate
+            const mergedRoles = [
+              ...new Set([...baseRoles, ...rbacClaims.roles]),
+            ]
+            const mergedPermissions = [
+              ...new Set([...basePermissions, ...rbacClaims.permissions]),
+            ]
+
             const enrichedProperties = {
               ...baseProperties,
               tenantId: tenant.id,
-              roles: rbacClaims.roles,
-              permissions: rbacClaims.permissions,
+              roles: mergedRoles,
+              permissions: mergedPermissions,
             }
 
             // Add account to session after successful auth

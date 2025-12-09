@@ -179,14 +179,25 @@ function executeSqlFile(
   dbName: string,
   filePath: string,
   options: { isLocal: boolean; isRemote: boolean; configFile?: string },
-): { success: boolean } {
+): { success: boolean; error?: string } {
+  // Check if file exists first
+  if (!existsSync(filePath)) {
+    return { success: false, error: `Migration file not found: ${filePath}` }
+  }
+
   const args = buildWranglerArgs(dbName, options)
   args.push("--file", filePath)
 
   const result = spawnSync("wrangler", args, {
-    stdio: "inherit",
+    encoding: "utf-8",
     shell: false,
+    stdio: ["pipe", "pipe", "pipe"],
   })
+
+  if (result.status !== 0) {
+    const errorOutput = result.stderr || result.stdout || ""
+    return { success: false, error: errorOutput }
+  }
 
   return { success: result.status === 0 }
 }
@@ -330,12 +341,20 @@ function migrate(args: string[]) {
   }
 
   // Get SQL files sorted by name
+  if (!existsSync(migrationsDir)) {
+    console.error(`Error: Migrations directory not found: ${migrationsDir}`)
+    console.error(
+      "This may indicate the openauth package was not installed correctly.",
+    )
+    process.exit(1)
+  }
+
   const sqlFiles = readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
     .sort()
 
   if (sqlFiles.length === 0) {
-    console.error("Error: No SQL migration files found")
+    console.error(`Error: No SQL migration files found in ${migrationsDir}`)
     process.exit(1)
   }
 
@@ -349,6 +368,9 @@ function migrate(args: string[]) {
     const trackingResult = executeSqlFile(dbName, trackingPath, options)
     if (!trackingResult.success) {
       console.error("Error: Failed to create migration tracking table")
+      if (trackingResult.error) {
+        console.error(trackingResult.error)
+      }
       process.exit(1)
     }
   }
@@ -406,6 +428,9 @@ function migrate(args: string[]) {
 
     if (!result.success) {
       console.error(`Error applying ${file}`)
+      if (result.error) {
+        console.error(result.error)
+      }
       console.error(
         `${applied} migration(s) were applied before the error occurred.`,
       )
