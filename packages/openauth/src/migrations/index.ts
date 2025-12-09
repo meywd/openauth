@@ -26,13 +26,13 @@
  * ## SQL Files
  *
  * The source SQL files are in this directory:
- * - 001_oauth_clients.sql
- * - 002_add_tenant_support.sql
- * - 003_session_management.sql
- * - 004_rbac_schema.sql
- * - 005_user_management.sql
- * - 006_identity_providers.sql
- * - 007_oauth_client_management.sql
+ * - 000_migration_tracking.sql - Migration state tracking
+ * - 001_oauth_clients.sql - OAuth client management with tenant isolation
+ * - 002_add_tenant_support.sql - Tenant management tables
+ * - 003_session_management.sql - Browser and account sessions
+ * - 004_rbac_schema.sql - Role-based access control
+ * - 005_user_management.sql - User and identity management
+ * - 006_identity_providers.sql - Dynamic provider configuration
  *
  * @packageDocumentation
  */

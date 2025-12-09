@@ -96,13 +96,12 @@ The CLI executes these SQL files in order:
 | File | Description |
 |------|-------------|
 | `000_migration_tracking.sql` | Migration tracking table (auto-created) |
-| `001_oauth_clients.sql` | OAuth client credentials table |
+| `001_oauth_clients.sql` | OAuth clients with tenant isolation & secret rotation |
 | `002_add_tenant_support.sql` | Tenant management tables |
 | `003_session_management.sql` | Session storage tables |
 | `004_rbac_schema.sql` | RBAC permissions, roles, assignments |
 | `005_user_management.sql` | Users and identity linking tables |
 | `006_identity_providers.sql` | Dynamic provider configurations |
-| `007_oauth_client_management.sql` | Client rotation support |
 
 All migrations use `CREATE TABLE IF NOT EXISTS` for idempotency.
 
@@ -126,15 +125,23 @@ wrangler d1 execute my-auth-db \
 
 ```sql
 CREATE TABLE oauth_clients (
-  client_id TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  name TEXT NOT NULL,
   client_secret_hash TEXT,
-  client_name TEXT NOT NULL,
-  redirect_uris TEXT,      -- JSON array
-  grant_types TEXT,        -- JSON array
-  scopes TEXT,             -- JSON array
+  grant_types TEXT,           -- JSON array
+  scopes TEXT,                -- JSON array
+  redirect_uris TEXT,         -- JSON array
+  metadata TEXT DEFAULT '{}', -- JSON object
+  enabled INTEGER DEFAULT 1,
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  rotated_at INTEGER,
+  previous_secret_hash TEXT,
+  previous_secret_expires_at INTEGER
 );
+
+CREATE UNIQUE INDEX idx_oauth_clients_tenant_name ON oauth_clients(tenant_id, name);
 ```
 
 ### Tenants
@@ -250,18 +257,6 @@ CREATE TABLE identity_providers (
   UNIQUE(tenant_id, name),
   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
-```
-
-### OAuth Client Extensions (007)
-
-```sql
--- Additional columns added to oauth_clients table
-ALTER TABLE oauth_clients ADD COLUMN name TEXT;
-ALTER TABLE oauth_clients ADD COLUMN enabled INTEGER DEFAULT 1;
-ALTER TABLE oauth_clients ADD COLUMN metadata TEXT DEFAULT '{}';
-ALTER TABLE oauth_clients ADD COLUMN rotated_at INTEGER;
-ALTER TABLE oauth_clients ADD COLUMN previous_secret_hash TEXT;
-ALTER TABLE oauth_clients ADD COLUMN previous_secret_expires_at INTEGER;
 ```
 
 ## Troubleshooting
