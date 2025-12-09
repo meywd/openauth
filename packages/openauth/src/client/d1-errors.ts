@@ -150,7 +150,32 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Check if an error is a domain/application error that should not be wrapped
+ * Domain errors are intentionally thrown by application code, not D1 failures
+ */
+function isDomainError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+
+  // These are application-level errors, not D1 errors
+  const domainErrorNames = [
+    "ClientNotFoundError",
+    "ClientNameConflictError",
+    "InvalidGrantTypeError",
+    "InvalidScopeFormatError",
+    "InvalidRedirectUriError",
+    "ClientError",
+    "ValidationError",
+  ]
+
+  return domainErrorNames.includes(error.name) ||
+         domainErrorNames.includes(error.constructor.name)
+}
+
+/**
  * Execute D1 operation with retry logic
+ *
+ * Domain errors (ClientNotFoundError, etc.) are passed through without wrapping.
+ * Only actual D1/database errors are classified and potentially retried.
  */
 export async function withRetry<T>(
   operation: string,
@@ -158,13 +183,18 @@ export async function withRetry<T>(
   config: Partial<RetryConfig> = {},
 ): Promise<T> {
   const cfg = { ...DEFAULT_RETRY_CONFIG, ...config }
-  let lastError: D1Error | undefined
+  let lastError: D1Error | Error | undefined
   let delay = cfg.initialDelayMs
 
   for (let attempt = 1; attempt <= cfg.maxAttempts; attempt++) {
     try {
       return await fn()
     } catch (error) {
+      // Preserve domain errors - don't wrap them as D1 errors
+      if (isDomainError(error)) {
+        throw error
+      }
+
       const d1Error = classifyD1Error(error, operation)
       lastError = d1Error
 

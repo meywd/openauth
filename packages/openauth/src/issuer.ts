@@ -203,7 +203,7 @@ import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 import type { D1Database } from "@cloudflare/workers-types"
-import { D1ClientAdapter } from "./client/d1-adapter.js"
+import { ClientD1Adapter } from "./client/client-d1-adapter.js"
 import { ClientAuthenticator } from "./client/authenticator.js"
 import { AuditService, type TokenUsageEvent } from "./services/audit.js"
 import { RevocationService } from "./revocation.js"
@@ -609,9 +609,7 @@ export function issuer<
   // Initialize client authentication if clientDb is provided
   let clientAuthenticator: ClientAuthenticator | undefined
   if (input.clientDb) {
-    const clientAdapter = new D1ClientAdapter({
-      database: input.clientDb,
-    })
+    const clientAdapter = new ClientD1Adapter(input.clientDb)
     clientAuthenticator = new ClientAuthenticator({
       adapter: clientAdapter,
     })
