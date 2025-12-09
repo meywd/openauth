@@ -3,12 +3,12 @@ title: Migrations
 description: Database setup and CLI for enterprise features.
 ---
 
-Enterprise features require a Cloudflare D1 database. The OpenAuth CLI handles migrations automatically.
+Enterprise features require a Cloudflare D1 database. The OpenAuth CLI handles schema setup automatically.
 
 ## CLI Usage
 
 ```bash
-# Run migrations (auto-detects database from wrangler config)
+# Apply schema (auto-detects database from wrangler config)
 npx openauth migrate
 
 # Specify database name
@@ -21,31 +21,24 @@ npx openauth migrate --local
 npx openauth migrate --remote
 
 # Combine options
-npx openauth migrate my-auth-db --local
+npx openauth migrate my-auth-db --remote
+
+# Custom config file
+npx openauth migrate -c wrangler.qa.json --remote
 ```
 
-## Migration Tracking
+## Idempotent Schema
 
-The CLI tracks applied migrations in a `_openauth_migrations` table. This allows:
-- **Safe re-runs** - Running migrate multiple times won't cause errors
-- **Incremental updates** - Only new migrations are applied
-- **Audit trail** - Track when each migration was applied
+The schema uses `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` throughout. This means:
 
-```bash
-# If you have an existing database that was migrated before tracking existed:
-npx openauth migrate --mark-applied
-
-# This marks all migrations as "applied" without executing them
-```
-
-## Build Integration
-
-Add migrations to your build script for automatic setup:
+- **Safe to run multiple times** - No errors on re-run
+- **No migration tracking needed** - Schema is self-healing
+- **Simple deployment** - Just run `npx openauth migrate` in your build
 
 ```json title="package.json"
 {
   "scripts": {
-    "build": "openauth migrate && tsc && wrangler deploy",
+    "build": "openauth migrate --remote && tsc && wrangler deploy",
     "dev": "openauth migrate --local && wrangler dev"
   }
 }
@@ -87,39 +80,24 @@ database_id = "your-database-id"
 }
 ```
 
-The CLI reads `database_name` from the first D1 database entry when no database is specified.
+## Database Schema
 
-## Migration Files
+All tables are created by a single schema file (`001_schema.sql`).
 
-The CLI executes these SQL files in order:
+### Tenants
 
-| File | Description |
-|------|-------------|
-| `000_migration_tracking.sql` | Migration tracking table (auto-created) |
-| `001_oauth_clients.sql` | OAuth clients with tenant isolation & secret rotation |
-| `002_add_tenant_support.sql` | Tenant management tables |
-| `003_session_management.sql` | Session storage tables |
-| `004_rbac_schema.sql` | RBAC permissions, roles, assignments |
-| `005_user_management.sql` | Users and identity linking tables |
-| `006_identity_providers.sql` | Dynamic provider configurations |
-
-All migrations use `CREATE TABLE IF NOT EXISTS` for idempotency.
-
-## Manual Migration
-
-If you prefer manual control, execute migrations directly with wrangler:
-
-```bash
-# Local
-wrangler d1 execute my-auth-db --local \
-  --file=./node_modules/@al-ummah-now/openauth/src/migrations/001_oauth_clients.sql
-
-# Remote
-wrangler d1 execute my-auth-db \
-  --file=./node_modules/@al-ummah-now/openauth/src/migrations/001_oauth_clients.sql
+```sql
+CREATE TABLE tenants (
+  id TEXT PRIMARY KEY,
+  domain TEXT UNIQUE,
+  name TEXT NOT NULL,
+  status TEXT DEFAULT 'active',
+  branding TEXT,
+  settings TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 ```
-
-## Database Schema Overview
 
 ### OAuth Clients
 
@@ -129,71 +107,51 @@ CREATE TABLE oauth_clients (
   tenant_id TEXT NOT NULL,
   name TEXT NOT NULL,
   client_secret_hash TEXT,
-  grant_types TEXT,           -- JSON array
-  scopes TEXT,                -- JSON array
-  redirect_uris TEXT,         -- JSON array
-  metadata TEXT DEFAULT '{}', -- JSON object
+  grant_types TEXT DEFAULT '[]',
+  scopes TEXT DEFAULT '[]',
+  redirect_uris TEXT DEFAULT '[]',
+  metadata TEXT DEFAULT '{}',
   enabled INTEGER DEFAULT 1,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   rotated_at INTEGER,
   previous_secret_hash TEXT,
-  previous_secret_expires_at INTEGER
+  previous_secret_expires_at INTEGER,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
-
-CREATE UNIQUE INDEX idx_oauth_clients_tenant_name ON oauth_clients(tenant_id, name);
 ```
 
-### Tenants
+### Browser Sessions
 
 ```sql
-CREATE TABLE tenants (
+CREATE TABLE browser_sessions (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  domain TEXT UNIQUE,
-  branding TEXT,           -- JSON object
-  status TEXT DEFAULT 'active',
+  tenant_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  last_activity INTEGER NOT NULL,
+  user_agent TEXT,
+  ip_address TEXT,
+  version INTEGER DEFAULT 1,
+  active_user_id TEXT,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 ```
 
-### Sessions
+### Account Sessions
 
 ```sql
-CREATE TABLE sessions (
+CREATE TABLE account_sessions (
   id TEXT PRIMARY KEY,
-  tenant_id TEXT,
+  browser_session_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
-  data TEXT,               -- Encrypted JSON
+  is_active INTEGER DEFAULT 0,
+  authenticated_at INTEGER NOT NULL,
   expires_at INTEGER NOT NULL,
-  created_at INTEGER NOT NULL
-);
-```
-
-### RBAC
-
-```sql
-CREATE TABLE rbac_permissions (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  created_at INTEGER NOT NULL
-);
-
-CREATE TABLE rbac_roles (
-  id TEXT NOT NULL,
-  tenant_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  permissions TEXT,        -- JSON array
-  PRIMARY KEY (id, tenant_id)
-);
-
-CREATE TABLE rbac_user_roles (
-  user_id TEXT NOT NULL,
-  role_id TEXT NOT NULL,
-  tenant_id TEXT NOT NULL,
-  PRIMARY KEY (user_id, role_id, tenant_id)
+  subject_type TEXT NOT NULL,
+  subject_properties TEXT,
+  refresh_token TEXT NOT NULL,
+  client_id TEXT NOT NULL,
+  FOREIGN KEY (browser_session_id) REFERENCES browser_sessions(id) ON DELETE CASCADE
 );
 ```
 
@@ -205,7 +163,7 @@ CREATE TABLE users (
   tenant_id TEXT NOT NULL,
   email TEXT NOT NULL,
   name TEXT,
-  metadata TEXT,              -- JSON object
+  metadata TEXT,
   status TEXT DEFAULT 'active',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
@@ -214,9 +172,8 @@ CREATE TABLE users (
   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 
--- Unique email per tenant (only for non-deleted users)
 CREATE UNIQUE INDEX idx_users_tenant_email
-    ON users(tenant_id, email) WHERE deleted_at IS NULL;
+  ON users(tenant_id, email) WHERE deleted_at IS NULL;
 ```
 
 ### User Identities
@@ -228,13 +185,10 @@ CREATE TABLE user_identities (
   tenant_id TEXT NOT NULL,
   provider TEXT NOT NULL,
   provider_user_id TEXT NOT NULL,
-  provider_data TEXT,         -- JSON object
+  provider_data TEXT,
   created_at INTEGER NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
-CREATE UNIQUE INDEX idx_identities_provider
-    ON user_identities(tenant_id, provider, provider_user_id);
 ```
 
 ### Identity Providers
@@ -243,13 +197,13 @@ CREATE UNIQUE INDEX idx_identities_provider
 CREATE TABLE identity_providers (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,
-  type TEXT NOT NULL,         -- google, github, facebook, microsoft, oidc, etc.
-  name TEXT NOT NULL,         -- Unique name within tenant (used in URLs)
-  display_name TEXT NOT NULL, -- Human-readable name for UI
+  type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  display_name TEXT NOT NULL,
   client_id TEXT,
-  client_secret_encrypted TEXT, -- AES-256-GCM encrypted
-  client_secret_iv TEXT,        -- Initialization vector (base64)
-  config TEXT DEFAULT '{}',     -- Provider-specific configuration (JSON)
+  client_secret_encrypted TEXT,
+  client_secret_iv TEXT,
+  config TEXT DEFAULT '{}',
   enabled INTEGER DEFAULT 1,
   display_order INTEGER DEFAULT 0,
   created_at INTEGER NOT NULL,
@@ -257,6 +211,91 @@ CREATE TABLE identity_providers (
   UNIQUE(tenant_id, name),
   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
+```
+
+### RBAC Tables
+
+```sql
+CREATE TABLE rbac_apps (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  description TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE rbac_roles (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  description TEXT,
+  is_system_role INTEGER DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE rbac_permissions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  app_id TEXT NOT NULL,
+  description TEXT,
+  resource TEXT NOT NULL,
+  action TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE rbac_role_permissions (
+  role_id TEXT NOT NULL,
+  permission_id TEXT NOT NULL,
+  granted_at INTEGER NOT NULL,
+  granted_by TEXT NOT NULL,
+  PRIMARY KEY (role_id, permission_id)
+);
+
+CREATE TABLE rbac_user_roles (
+  user_id TEXT NOT NULL,
+  role_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  assigned_at INTEGER NOT NULL,
+  expires_at INTEGER,
+  assigned_by TEXT NOT NULL,
+  PRIMARY KEY (user_id, role_id, tenant_id)
+);
+```
+
+### Permission Check View
+
+```sql
+CREATE VIEW user_permissions AS
+SELECT DISTINCT
+  ur.user_id,
+  ur.tenant_id,
+  p.app_id,
+  p.name AS permission_name,
+  p.resource,
+  p.action,
+  r.name AS role_name,
+  r.is_system_role,
+  ur.expires_at
+FROM rbac_user_roles ur
+INNER JOIN rbac_roles r ON ur.role_id = r.id
+INNER JOIN rbac_role_permissions rp ON r.id = rp.role_id
+INNER JOIN rbac_permissions p ON rp.permission_id = p.id
+WHERE (ur.expires_at IS NULL OR ur.expires_at > strftime('%s', 'now') * 1000);
+```
+
+## Manual Migration
+
+If you prefer manual control, execute the schema directly with wrangler:
+
+```bash
+# Local
+wrangler d1 execute my-auth-db --local \
+  --file=./node_modules/@openauthjs/openauth/src/migrations/001_schema.sql
+
+# Remote
+wrangler d1 execute my-auth-db --remote \
+  --file=./node_modules/@openauthjs/openauth/src/migrations/001_schema.sql
 ```
 
 ## Troubleshooting
@@ -271,15 +310,12 @@ npm install -g wrangler
 
 ### "No database name provided"
 
-Either specify the database name or ensure your wrangler config has a D1 database entry with `database_name`. Supported config files: `wrangler.toml`, `wrangler.json`, `wrangler.jsonc`.
+Either specify the database name or ensure your wrangler config has a D1 database entry with `database_name`.
 
-### Migration errors
+### Schema errors
 
-With migration tracking enabled, re-running migrations is safe. If you encounter "duplicate column" errors on an existing database:
+The schema is idempotent. If you encounter errors, check:
 
-```bash
-# Mark all migrations as applied without re-executing them
-npx openauth migrate --mark-applied --local
-```
-
-This is useful when upgrading from an older version that didn't track migrations.
+1. Database connectivity (`wrangler d1 list`)
+2. Permissions (must have D1 access)
+3. Config file path (`-c wrangler.qa.json`)

@@ -5,35 +5,28 @@
  * Provides commands for managing OpenAuth in your project.
  *
  * Usage:
- *   npx openauth migrate [database-name] [--local] [--config <file>]
+ *   npx openauth migrate [database-name] [--local] [--remote] [--config <file>]
  *
  * If database-name is not provided, reads from wrangler config.
  * Supports: wrangler.toml, wrangler.json, wrangler.jsonc
- * Use --config to specify a custom config file (e.g., wrangler.qa.json)
  */
 
 import { execSync, spawnSync } from "child_process"
-import { readFileSync, readdirSync, existsSync } from "fs"
-import { createHash } from "crypto"
+import { readFileSync, existsSync } from "fs"
 import { dirname, join } from "path"
 import { fileURLToPath } from "url"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-// Migrations are in src/migrations relative to package root
-const migrationsDir = join(__dirname, "..", "src", "migrations")
-
-// Migration tracking table name
-const MIGRATIONS_TABLE = "_openauth_migrations"
+// Single migration file
+const migrationFile = join(__dirname, "..", "src", "migrations", "001_schema.sql")
 
 /**
- * Strip JSON comments (single-line and multi-line) for JSONC support
+ * Strip JSON comments for JSONC support
  */
 function stripJsonComments(content: string): string {
-  // Remove single-line comments
   content = content.replace(/\/\/.*$/gm, "")
-  // Remove multi-line comments
   content = content.replace(/\/\*[\s\S]*?\*\//g, "")
   return content
 }
@@ -51,7 +44,6 @@ function parseConfigFile(configPath: string): {
 
   const content = readFileSync(configPath, "utf-8")
 
-  // Determine file type by extension
   if (configPath.endsWith(".toml")) {
     const match = content.match(/database_name\s*=\s*"([^"]+)"/)
     if (match) {
@@ -85,28 +77,23 @@ function parseConfigFile(configPath: string): {
 
 /**
  * Parse wrangler config to get database name
- * Supports: wrangler.toml, wrangler.json, wrangler.jsonc
  */
 function parseWranglerConfig(customConfig?: string): {
   databaseName: string
   configFile: string
 } | null {
-  // If custom config specified, use only that
   if (customConfig) {
     return parseConfigFile(customConfig)
   }
 
   const cwd = process.cwd()
 
-  // Try wrangler.toml first
   const tomlResult = parseConfigFile(join(cwd, "wrangler.toml"))
   if (tomlResult) return tomlResult
 
-  // Try wrangler.json
   const jsonResult = parseConfigFile(join(cwd, "wrangler.json"))
   if (jsonResult) return jsonResult
 
-  // Try wrangler.jsonc
   const jsoncResult = parseConfigFile(join(cwd, "wrangler.jsonc"))
   if (jsoncResult) return jsoncResult
 
@@ -117,7 +104,6 @@ function parseWranglerConfig(customConfig?: string): {
  * Extract database name from parsed JSON config
  */
 function extractDbNameFromJson(config: any): string | null {
-  // Check d1_databases array
   if (Array.isArray(config.d1_databases) && config.d1_databases.length > 0) {
     const db = config.d1_databases[0]
     if (db.database_name) {
@@ -125,13 +111,6 @@ function extractDbNameFromJson(config: any): string | null {
     }
   }
   return null
-}
-
-/**
- * Calculate checksum of file content
- */
-function calculateChecksum(content: string): string {
-  return createHash("sha256").update(content).digest("hex").slice(0, 16)
 }
 
 /**
@@ -149,30 +128,6 @@ function buildWranglerArgs(
 }
 
 /**
- * Execute a SQL command and return the output
- */
-function executeSqlCommand(
-  dbName: string,
-  sql: string,
-  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
-): { success: boolean; output: string } {
-  const args = buildWranglerArgs(dbName, options)
-  args.push("--command", sql)
-
-  // Don't use shell: true to avoid escaping issues with SQL quotes
-  const result = spawnSync("wrangler", args, {
-    encoding: "utf-8",
-    shell: false,
-    stdio: ["pipe", "pipe", "pipe"],
-  })
-
-  return {
-    success: result.status === 0,
-    output: result.stdout || result.stderr || "",
-  }
-}
-
-/**
  * Execute a SQL file
  */
 function executeSqlFile(
@@ -180,7 +135,6 @@ function executeSqlFile(
   filePath: string,
   options: { isLocal: boolean; isRemote: boolean; configFile?: string },
 ): { success: boolean; error?: string } {
-  // Check if file exists first
   if (!existsSync(filePath)) {
     return { success: false, error: `Migration file not found: ${filePath}` }
   }
@@ -199,55 +153,7 @@ function executeSqlFile(
     return { success: false, error: errorOutput }
   }
 
-  return { success: result.status === 0 }
-}
-
-/**
- * Get list of already applied migrations from database
- */
-function getAppliedMigrations(
-  dbName: string,
-  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
-): Set<string> {
-  const sql = `SELECT name FROM ${MIGRATIONS_TABLE}`
-  const result = executeSqlCommand(dbName, sql, options)
-
-  if (!result.success) {
-    // Table might not exist yet, return empty set
-    return new Set()
-  }
-
-  // Parse output - wrangler returns JSON results
-  const applied = new Set<string>()
-  try {
-    // Try to extract migration names from output
-    const matches = result.output.match(/"name":\s*"([^"]+)"/g)
-    if (matches) {
-      for (const match of matches) {
-        const name = match.match(/"name":\s*"([^"]+)"/)?.[1]
-        if (name) applied.add(name)
-      }
-    }
-  } catch {
-    // Ignore parse errors
-  }
-
-  return applied
-}
-
-/**
- * Record a migration as applied
- */
-function recordMigration(
-  dbName: string,
-  migrationName: string,
-  checksum: string,
-  options: { isLocal: boolean; isRemote: boolean; configFile?: string },
-): boolean {
-  const now = Date.now()
-  const sql = `INSERT OR REPLACE INTO ${MIGRATIONS_TABLE} (name, applied_at, checksum) VALUES ('${migrationName}', ${now}, '${checksum}')`
-  const result = executeSqlCommand(dbName, sql, options)
-  return result.success
+  return { success: true }
 }
 
 function printHelp() {
@@ -255,15 +161,13 @@ function printHelp() {
 OpenAuth CLI
 
 Usage:
-  openauth migrate [database-name] [options]    Apply database migrations
+  openauth migrate [database-name] [options]    Apply database schema
   openauth help                                 Show this help message
 
 Options:
   --local              Apply to local D1 database (for development)
   --remote             Apply to remote D1 database (production)
   --config, -c <file>  Use a specific wrangler config file
-  --mark-applied       Mark all migrations as applied without running them
-                       (useful for existing databases that were migrated before tracking)
 
 Examples:
   openauth migrate                       # Auto-detect from wrangler config
@@ -271,19 +175,16 @@ Examples:
   openauth migrate --remote              # Remote database (production)
   openauth migrate my-auth-db --remote   # Specify database, remote
   openauth migrate -c wrangler.qa.json --remote
-  openauth migrate --mark-applied        # Mark existing migrations as applied
 
-The migrate command executes OpenAuth SQL migrations against your D1 database.
-It tracks applied migrations to prevent duplicate execution.
+The migrate command applies the OpenAuth database schema to your D1 database.
+The schema is idempotent - safe to run multiple times.
 `)
 }
 
 function migrate(args: string[]) {
-  // Parse args for database name, --local/--remote flags, and --config option
   let dbName: string | undefined
   let isLocal = false
   let isRemote = false
-  let markApplied = false
   let configFile: string | undefined
 
   for (let i = 0; i < args.length; i++) {
@@ -292,8 +193,6 @@ function migrate(args: string[]) {
       isLocal = true
     } else if (arg === "--remote") {
       isRemote = true
-    } else if (arg === "--mark-applied") {
-      markApplied = true
     } else if (arg === "--config" || arg === "-c") {
       configFile = args[++i]
       if (!configFile) {
@@ -305,13 +204,11 @@ function migrate(args: string[]) {
     }
   }
 
-  // Validate mutually exclusive flags
   if (isLocal && isRemote) {
     console.error("Error: Cannot specify both --local and --remote")
     process.exit(1)
   }
 
-  // Try to get database name from wrangler config if not provided
   if (!dbName) {
     const config = parseWranglerConfig(configFile)
     if (config) {
@@ -340,113 +237,31 @@ function migrate(args: string[]) {
     process.exit(1)
   }
 
-  // Get SQL files sorted by name
-  if (!existsSync(migrationsDir)) {
-    console.error(`Error: Migrations directory not found: ${migrationsDir}`)
+  // Check migration file exists
+  if (!existsSync(migrationFile)) {
+    console.error(`Error: Migration file not found: ${migrationFile}`)
     console.error(
       "This may indicate the openauth package was not installed correctly.",
     )
     process.exit(1)
   }
 
-  const sqlFiles = readdirSync(migrationsDir)
-    .filter((f) => f.endsWith(".sql"))
-    .sort()
+  const options = { isLocal, isRemote, configFile }
+  const target = isLocal ? " (local)" : isRemote ? " (remote)" : ""
 
-  if (sqlFiles.length === 0) {
-    console.error(`Error: No SQL migration files found in ${migrationsDir}`)
+  console.log(`Applying OpenAuth schema to ${dbName}${target}...`)
+
+  const result = executeSqlFile(dbName, migrationFile, options)
+
+  if (!result.success) {
+    console.error("Error: Failed to apply schema")
+    if (result.error) {
+      console.error(result.error)
+    }
     process.exit(1)
   }
 
-  const options = { isLocal, isRemote, configFile }
-
-  // First, ensure the tracking table exists (run 000 migration)
-  const trackingMigration = sqlFiles.find((f) => f.startsWith("000_"))
-  if (trackingMigration) {
-    const trackingPath = join(migrationsDir, trackingMigration)
-    console.log(`Ensuring migration tracking table exists...`)
-    const trackingResult = executeSqlFile(dbName, trackingPath, options)
-    if (!trackingResult.success) {
-      console.error("Error: Failed to create migration tracking table")
-      if (trackingResult.error) {
-        console.error(trackingResult.error)
-      }
-      process.exit(1)
-    }
-  }
-
-  // Get already applied migrations
-  const appliedMigrations = getAppliedMigrations(dbName, options)
-  if (appliedMigrations.size > 0) {
-    console.log(`Found ${appliedMigrations.size} previously applied migrations`)
-  }
-
-  // Filter out already applied migrations (except 000 which is always safe)
-  const pendingMigrations = sqlFiles.filter(
-    (f) => !appliedMigrations.has(f) && !f.startsWith("000_"),
-  )
-
-  // Handle --mark-applied flag
-  if (markApplied) {
-    console.log(
-      `Marking ${pendingMigrations.length} migration(s) as applied (without executing)...`,
-    )
-    for (const file of pendingMigrations) {
-      const filePath = join(migrationsDir, file)
-      const content = readFileSync(filePath, "utf-8")
-      const checksum = calculateChecksum(content)
-      const recorded = recordMigration(dbName, file, checksum, options)
-      if (recorded) {
-        console.log(`  Marked ${file} as applied`)
-      } else {
-        console.warn(`  Warning: Could not mark ${file} as applied`)
-      }
-    }
-    console.log("Done! All migrations marked as applied.")
-    return
-  }
-
-  if (pendingMigrations.length === 0) {
-    console.log("All migrations are already applied. Database is up to date.")
-    return
-  }
-
-  console.log(
-    `Applying ${pendingMigrations.length} new migration(s) to ${dbName}${isLocal ? " (local)" : isRemote ? " (remote)" : ""}...`,
-  )
-
-  // Execute each pending SQL file
-  let applied = 0
-  for (const file of pendingMigrations) {
-    const filePath = join(migrationsDir, file)
-    const content = readFileSync(filePath, "utf-8")
-    const checksum = calculateChecksum(content)
-
-    console.log(`  Applying ${file}...`)
-
-    const result = executeSqlFile(dbName, filePath, options)
-
-    if (!result.success) {
-      console.error(`Error applying ${file}`)
-      if (result.error) {
-        console.error(result.error)
-      }
-      console.error(
-        `${applied} migration(s) were applied before the error occurred.`,
-      )
-      process.exit(1)
-    }
-
-    // Record the migration as applied
-    const recorded = recordMigration(dbName, file, checksum, options)
-    if (!recorded) {
-      console.warn(`  Warning: Could not record ${file} in tracking table`)
-    }
-
-    applied++
-  }
-
-  console.log(`Successfully applied ${applied} migration(s)!`)
+  console.log("Schema applied successfully!")
 }
 
 // Parse command line arguments

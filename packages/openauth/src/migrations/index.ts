@@ -1,5 +1,5 @@
 /**
- * Database Migrations for OpenAuth Enterprise Features
+ * Database Schema for OpenAuth Enterprise Features
  *
  * Run migrations using the CLI:
  *
@@ -10,29 +10,32 @@
  * Or specify the database name explicitly:
  *
  * ```bash
- * npx openauth migrate my-auth-db
+ * npx openauth migrate my-auth-db --remote
  * ```
  *
- * Add to your build script for automatic migrations:
+ * ## Schema File
  *
- * ```json
- * {
- *   "scripts": {
- *     "build": "openauth migrate && tsc"
- *   }
- * }
- * ```
+ * All tables are defined in a single file:
+ * - `001_schema.sql` - Complete OpenAuth database schema
  *
- * ## SQL Files
+ * The schema is idempotent (uses CREATE TABLE IF NOT EXISTS).
+ * Safe to run multiple times.
  *
- * The source SQL files are in this directory:
- * - 000_migration_tracking.sql - Migration state tracking
- * - 001_oauth_clients.sql - OAuth client management with tenant isolation
- * - 002_add_tenant_support.sql - Tenant management tables
- * - 003_session_management.sql - Browser and account sessions
- * - 004_rbac_schema.sql - Role-based access control
- * - 005_user_management.sql - User and identity management
- * - 006_identity_providers.sql - Dynamic provider configuration
+ * ## Tables
+ *
+ * - `_openauth_migrations` - Migration tracking
+ * - `tenants` - Multi-tenant support
+ * - `oauth_clients` - OAuth 2.0 clients with secret rotation
+ * - `browser_sessions` - Browser/device sessions
+ * - `account_sessions` - User account sessions (multi-account)
+ * - `users` - User accounts
+ * - `user_identities` - Identity provider links
+ * - `identity_providers` - Dynamic provider configuration
+ * - `rbac_apps` - RBAC applications
+ * - `rbac_roles` - Role definitions
+ * - `rbac_permissions` - Permission definitions
+ * - `rbac_role_permissions` - Role-permission mapping
+ * - `rbac_user_roles` - User-role assignments
  *
  * @packageDocumentation
  */
