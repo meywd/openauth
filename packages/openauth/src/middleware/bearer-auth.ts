@@ -230,14 +230,10 @@ export function bearerAuth(options: BearerAuthOptions) {
         payload = result.payload
       } else {
         // It's a JWKS resolver (will be called by jwtVerify with header info)
-        const result = await jwtVerify(
-          token,
-          keyResolver as JWTVerifyGetKey,
-          {
-            issuer: options.issuer,
-            audience: options.audience,
-          },
-        )
+        const result = await jwtVerify(token, keyResolver as JWTVerifyGetKey, {
+          issuer: options.issuer,
+          audience: options.audience,
+        })
         payload = result.payload
       }
 
