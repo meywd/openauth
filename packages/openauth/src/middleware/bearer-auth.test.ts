@@ -20,7 +20,10 @@ import { AuthError, MissingTokenError, InvalidTokenError } from "./errors.js"
 function addErrorHandler(app: Hono) {
   app.onError((error, c) => {
     if (error instanceof AuthError) {
-      return c.json({ error: error.message, code: error.code }, error.status)
+      return c.json(
+        { error: error.message, code: error.code },
+        error.status as 401 | 403,
+      )
     }
     return c.json({ error: "Internal Server Error" }, 500)
   })
@@ -188,7 +191,7 @@ describe("bearerAuth middleware", () => {
           issuer,
         }),
       )
-      app.get("/test", (c) =>
+      app.get("/test", (c: any) =>
         c.json({ success: true, tenantId: c.get("tenantId") }),
       )
 
@@ -198,7 +201,7 @@ describe("bearerAuth middleware", () => {
       })
 
       expect(res.status).toBe(200)
-      const body = await res.json()
+      const body: any = await res.json()
       expect(body.success).toBe(true)
     })
 
@@ -229,7 +232,7 @@ describe("bearerAuth middleware", () => {
 
       const app = new Hono()
       app.use("*", bearerAuth({ jwks, issuer }))
-      app.get("/test", (c) =>
+      app.get("/test", (c: any) =>
         c.json({
           success: true,
           clientId: c.get("clientId"),
@@ -244,7 +247,7 @@ describe("bearerAuth middleware", () => {
       })
 
       expect(res1.status).toBe(200)
-      const body1 = await res1.json()
+      const body1: any = await res1.json()
       expect(body1.success).toBe(true)
       expect(body1.clientId).toBe("test-client")
       expect(body1.scopes).toEqual(["read", "write"])
@@ -480,7 +483,7 @@ describe("bearerAuth middleware", () => {
 
       const app = new Hono()
       app.use("*", bearerAuth({ jwks, issuer }))
-      app.get("/test", (c) =>
+      app.get("/test", (c: any) =>
         c.json({
           tenantId: c.get("tenantId"),
           clientId: c.get("clientId"),
@@ -507,7 +510,7 @@ describe("bearerAuth middleware", () => {
       })
 
       expect(res.status).toBe(200)
-      const body = await res.json()
+      const body: any = await res.json()
       expect(body.tenantId).toBe("tenant-123")
       expect(body.clientId).toBe("my-client")
       expect(body.scopes).toEqual(["api:read", "api:write"])
@@ -519,14 +522,14 @@ describe("bearerAuth middleware", () => {
 
       const app = new Hono()
       app.use("*", bearerAuth({ jwks, issuer }))
-      app.get("/test", (c) => c.json({ tenantId: c.get("tenantId") }))
+      app.get("/test", (c: any) => c.json({ tenantId: c.get("tenantId") }))
 
       const token = await createToken(keyPair1.privateKey, "key-1")
       const res = await app.request("/test", {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      const body = await res.json()
+      const body: any = await res.json()
       expect(body.tenantId).toBe("default")
     })
 
@@ -535,7 +538,7 @@ describe("bearerAuth middleware", () => {
 
       const app = new Hono()
       app.use("*", bearerAuth({ jwks, issuer }))
-      app.get("/test", (c) =>
+      app.get("/test", (c: any) =>
         c.json({
           tenantId: c.get("tenantId"),
           clientId: c.get("clientId"),
@@ -558,7 +561,7 @@ describe("bearerAuth middleware", () => {
         headers: { Authorization: `Bearer ${userToken}` },
       })
 
-      const body = await res.json()
+      const body: any = await res.json()
       expect(body.tenantId).toBe("tenant-abc")
       expect(body.clientId).toBeUndefined()
       expect(body.scopes).toBeUndefined()

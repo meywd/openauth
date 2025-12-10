@@ -217,21 +217,29 @@ export function bearerAuth(options: BearerAuthOptions) {
     }
 
     try {
-      // Resolve key - handles single key, JWKS URL, or local JWKS
-      let key: CryptoKey | JWTVerifyGetKey
+      // Resolve key and verify - handles single key, JWKS URL, or local JWKS
+      let payload: JWTPayload
 
       if (typeof keyResolver === "function" && keyResolver.length === 0) {
         // It's a getPublicKey function (no arguments)
-        key = await (keyResolver as () => Promise<CryptoKey>)()
+        const publicKey = await (keyResolver as () => Promise<CryptoKey>)()
+        const result = await jwtVerify(token, publicKey, {
+          issuer: options.issuer,
+          audience: options.audience,
+        })
+        payload = result.payload
       } else {
         // It's a JWKS resolver (will be called by jwtVerify with header info)
-        key = keyResolver as JWTVerifyGetKey
+        const result = await jwtVerify(
+          token,
+          keyResolver as JWTVerifyGetKey,
+          {
+            issuer: options.issuer,
+            audience: options.audience,
+          },
+        )
+        payload = result.payload
       }
-
-      const { payload } = await jwtVerify(token, key, {
-        issuer: options.issuer,
-        audience: options.audience,
-      })
 
       // Validate token structure
       const tokenPayload = validateTokenPayload(payload, options.requireM2M)
