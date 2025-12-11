@@ -702,24 +702,35 @@ export function createMultiTenantIssuer<
       authorization,
     })
 
+    // Track the effective active account (may be updated by account_hint or login_hint)
+    let effectiveActiveAccount = activeAccount
+
     // Handle account_hint if provided
     if (authorization.account_hint && browserSession) {
-      await handleAccountHint(
+      const accountHintResult = await handleAccountHint(
         c,
         authorization.account_hint,
         config.sessionService,
         browserSession,
       )
+      // Use the selected account if account_hint matched
+      if (accountHintResult.selectedAccount) {
+        effectiveActiveAccount = accountHintResult.selectedAccount
+      }
     }
 
     // Handle login_hint if provided
     if (authorization.login_hint && browserSession) {
-      await handleLoginHint(
+      const loginHintAccount = await handleLoginHint(
         c,
         authorization.login_hint,
         config.sessionService,
         browserSession,
       )
+      // Use the matched account if login_hint found one
+      if (loginHintAccount) {
+        effectiveActiveAccount = loginHintAccount
+      }
     }
 
     // Handle prompt parameter (OIDC specific)
@@ -729,7 +740,7 @@ export function createMultiTenantIssuer<
       config.sessionService,
       browserSession,
       authorization,
-      activeAccount,
+      effectiveActiveAccount,
     )
 
     // Debug: Log prompt result
