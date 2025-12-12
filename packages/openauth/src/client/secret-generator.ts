@@ -15,11 +15,10 @@ export function generateClientSecret(): string {
 }
 
 /**
- * Generate a client ID with prefix
+ * Generate a client ID as UUID
  */
-export function generateClientId(prefix = "client"): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(12))
-  return `${prefix}_${bytesToBase64Url(bytes)}`
+export function generateClientId(): string {
+  return crypto.randomUUID()
 }
 
 /**

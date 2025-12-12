@@ -7,16 +7,20 @@ import {
 } from "./secret-generator.js"
 
 describe("generateClientId", () => {
-  test("generates unique IDs with prefix", () => {
+  test("generates unique UUIDs", () => {
     const id1 = generateClientId()
     const id2 = generateClientId()
     expect(id1).not.toBe(id2)
-    expect(id1).toMatch(/^client_[A-Za-z0-9_-]+$/)
+    // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+    expect(id1).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
   })
 
-  test("uses custom prefix", () => {
-    const id = generateClientId("svc")
-    expect(id).toMatch(/^svc_/)
+  test("generates valid UUIDs", () => {
+    const id = generateClientId()
+    expect(id.length).toBe(36)
+    expect(id.split("-").length).toBe(5)
   })
 })
 
