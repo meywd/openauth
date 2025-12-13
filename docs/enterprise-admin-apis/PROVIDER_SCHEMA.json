@@ -1,0 +1,460 @@
+{
+  "version": "1.0",
+  "description": "Provider configuration schema for dynamic form generation and validation",
+  "providers": {
+    "google": {
+      "name": "Google",
+      "type": "oauth2",
+      "variants": ["oauth2", "oidc"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://accounts.google.com/o/oauth2/v2/auth",
+        "token": "https://oauth2.googleapis.com/token",
+        "jwks": "https://www.googleapis.com/oauth2/v3/certs"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["profile", "email", "openid"],
+      "notes": "Supports both OAuth2 and OIDC. Use GoogleProvider for OAuth2 or GoogleOidcProvider for OIDC."
+    },
+    "github": {
+      "name": "GitHub",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://github.com/login/oauth/authorize",
+        "token": "https://github.com/login/oauth/access_token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["read:user", "user:email"],
+      "notes": "GitHub OAuth supports detailed scope control for repository and user access."
+    },
+    "microsoft": {
+      "name": "Microsoft",
+      "type": "oauth2",
+      "variants": ["oauth2", "oidc"],
+      "requiredFields": ["clientID", "clientSecret", "tenant"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpointTemplate": {
+        "authorization": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
+        "token": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["User.Read", "profile", "email"],
+      "notes": "Uses tenant-specific endpoints. OIDC configuration: issuer=https://graph.microsoft.com/oidc/userinfo"
+    },
+    "apple": {
+      "name": "Apple",
+      "type": "oauth2",
+      "variants": ["oauth2", "oidc"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce", "responseMode"],
+      "endpoints": {
+        "authorization": "https://appleid.apple.com/auth/authorize",
+        "token": "https://appleid.apple.com/auth/token",
+        "jwks": "https://appleid.apple.com/auth/keys"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["name", "email"],
+      "notes": "Requires responseMode=form_post when requesting name or email scopes. Apple requires a client secret."
+    },
+    "facebook": {
+      "name": "Facebook",
+      "type": "oauth2",
+      "variants": ["oauth2", "oidc"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://www.facebook.com/v12.0/dialog/oauth",
+        "token": "https://graph.facebook.com/v12.0/oauth/access_token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["email", "public_profile"],
+      "notes": "Version endpoint uses v12.0 (may vary by API version). OIDC issuer: https://graph.facebook.com"
+    },
+    "discord": {
+      "name": "Discord",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://discord.com/oauth2/authorize",
+        "token": "https://discord.com/api/oauth2/token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["identify", "email", "guilds"],
+      "notes": "Discord bot and OAuth settings are configured separately in developer portal."
+    },
+    "slack": {
+      "name": "Slack",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret", "team", "scopes"],
+      "optionalFields": ["query", "pkce"],
+      "endpoints": {
+        "authorization": "https://slack.com/openid/connect/authorize",
+        "token": "https://slack.com/api/openid.connect.token"
+      },
+      "defaultScopes": ["openid", "email", "profile"],
+      "allowedScopes": ["email", "profile", "openid"],
+      "notes": "Uses OpenID Connect protocol. Team parameter pre-fills workspace. Only supports three specific scopes."
+    },
+    "spotify": {
+      "name": "Spotify",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://accounts.spotify.com/authorize",
+        "token": "https://accounts.spotify.com/api/token"
+      },
+      "defaultScopes": [],
+      "commonScopes": [
+        "user-read-private",
+        "user-read-email",
+        "user-modify-playback-state"
+      ],
+      "notes": "Scopes control API access level."
+    },
+    "twitch": {
+      "name": "Twitch",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://id.twitch.tv/oauth2/authorize",
+        "token": "https://id.twitch.tv/oauth2/token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["user:read:email"],
+      "notes": "Twitch enforces scope-based access to API endpoints."
+    },
+    "x": {
+      "name": "X (Twitter)",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query"],
+      "endpoints": {
+        "authorization": "https://twitter.com/i/oauth2/authorize",
+        "token": "https://api.x.com/2/oauth2/token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["tweet.read", "users.read", "follows.read"],
+      "pkceRequired": true,
+      "notes": "X requires PKCE for OAuth 2.0 flows (automatically enforced). Requires app approval and use case submission."
+    },
+    "yahoo": {
+      "name": "Yahoo",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://api.login.yahoo.com/oauth2/request_auth",
+        "token": "https://api.login.yahoo.com/oauth2/get_token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["openid", "profile", "email"],
+      "notes": "Yahoo supports OpenID Connect scopes."
+    },
+    "linkedin": {
+      "name": "LinkedIn",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://www.linkedin.com/oauth/v2/authorization",
+        "token": "https://www.linkedin.com/oauth/v2/accessToken"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["profile", "email", "openid"],
+      "notes": "LinkedIn uses standard OAuth 2.0 authorization code flow."
+    },
+    "jumpcloud": {
+      "name": "JumpCloud",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpoints": {
+        "authorization": "https://oauth.id.jumpcloud.com/oauth2/auth",
+        "token": "https://oauth.id.jumpcloud.com/oauth2/token"
+      },
+      "defaultScopes": [],
+      "notes": "JumpCloud is an identity and access management platform."
+    },
+    "keycloak": {
+      "name": "Keycloak",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret", "baseUrl", "realm"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpointTemplate": {
+        "authorization": "{baseUrl}/realms/{realm}/protocol/openid-connect/auth",
+        "token": "{baseUrl}/realms/{realm}/protocol/openid-connect/token"
+      },
+      "defaultScopes": [],
+      "commonScopes": ["openid", "profile", "email", "roles"],
+      "notes": "Keycloak is an open-source identity and access management solution. Realm is a logical namespace/tenant."
+    },
+    "cognito": {
+      "name": "AWS Cognito",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": ["clientID", "clientSecret", "domain", "region"],
+      "optionalFields": ["scopes", "query", "pkce"],
+      "endpointTemplate": {
+        "authorization": "https://{domain}.auth.{region}.amazoncognito.com/oauth2/authorize",
+        "token": "https://{domain}.auth.{region}.amazoncognito.com/oauth2/token"
+      },
+      "defaultScopes": [],
+      "commonScopes": [
+        "openid",
+        "profile",
+        "email",
+        "aws.cognito.signin.user.admin"
+      ],
+      "notes": "Cognito is AWS's managed authentication service. Domain is configured separately from the full URL."
+    },
+    "oauth2": {
+      "name": "Generic OAuth2",
+      "type": "oauth2",
+      "variants": ["oauth2"],
+      "requiredFields": [
+        "clientID",
+        "clientSecret",
+        "endpoint.authorization",
+        "endpoint.token",
+        "scopes"
+      ],
+      "optionalFields": ["endpoint.jwks", "query", "pkce"],
+      "notes": "Flexible OAuth 2.0 provider for any OAuth 2.0-compliant service."
+    },
+    "oidc": {
+      "name": "Generic OIDC",
+      "type": "oidc",
+      "variants": ["oidc"],
+      "requiredFields": ["clientID", "issuer"],
+      "optionalFields": ["scopes", "query"],
+      "discovery": true,
+      "discoveryEndpoint": "{issuer}/.well-known/openid-configuration",
+      "notes": "Uses OIDC Discovery to automatically fetch endpoints. No client secret required.",
+      "autoDiscoveredEndpoints": [
+        "authorization_endpoint",
+        "token_endpoint",
+        "jwks_uri"
+      ]
+    },
+    "password": {
+      "name": "Password",
+      "type": "custom",
+      "variants": ["password"],
+      "requiredCallbacks": ["login", "register", "change", "sendCode"],
+      "optionalFields": ["length", "hasher", "validatePassword"],
+      "defaultLength": 6,
+      "defaultHasher": "scrypt",
+      "notes": "Email/password authentication with email verification via PIN code."
+    },
+    "code": {
+      "name": "Code (PIN)",
+      "type": "custom",
+      "variants": ["code"],
+      "requiredCallbacks": ["request", "sendCode"],
+      "optionalFields": ["length"],
+      "defaultLength": 6,
+      "notes": "Passwordless authentication using PIN codes sent to user-specified claims."
+    }
+  },
+  "fieldTypes": {
+    "clientID": {
+      "type": "string",
+      "description": "Application client ID from provider",
+      "validation": "non-empty string",
+      "sensitive": false
+    },
+    "clientSecret": {
+      "type": "string",
+      "description": "Application client secret (keep secret)",
+      "validation": "non-empty string",
+      "sensitive": true,
+      "uiType": "password"
+    },
+    "tenant": {
+      "type": "string",
+      "description": "Azure AD tenant ID (Microsoft only)",
+      "validation": "non-empty string",
+      "sensitive": false
+    },
+    "team": {
+      "type": "string",
+      "description": "Slack workspace team ID (format: T1234567890)",
+      "validation": "non-empty string",
+      "pattern": "^T[A-Z0-9]+$",
+      "sensitive": false
+    },
+    "baseUrl": {
+      "type": "string",
+      "description": "Base URL of authorization server (Keycloak)",
+      "validation": "valid URL",
+      "pattern": "^https?://",
+      "sensitive": false
+    },
+    "realm": {
+      "type": "string",
+      "description": "Keycloak realm name",
+      "validation": "non-empty string",
+      "sensitive": false
+    },
+    "domain": {
+      "type": "string",
+      "description": "Cognito domain name (without auth suffix)",
+      "validation": "non-empty string",
+      "sensitive": false
+    },
+    "region": {
+      "type": "string",
+      "description": "AWS region (e.g., us-east-1)",
+      "validation": "AWS region format",
+      "pattern": "^[a-z]{2}-[a-z]+-\\d{1}$",
+      "sensitive": false
+    },
+    "issuer": {
+      "type": "string",
+      "description": "OIDC issuer base URL",
+      "validation": "valid URL",
+      "pattern": "^https?://",
+      "sensitive": false
+    },
+    "scopes": {
+      "type": "array",
+      "items": "string",
+      "description": "List of scopes to request",
+      "validation": "array of strings",
+      "sensitive": false
+    },
+    "responseMode": {
+      "type": "string",
+      "description": "OIDC response mode (Apple only)",
+      "enum": ["query", "form_post"],
+      "default": "query",
+      "sensitive": false
+    },
+    "pkce": {
+      "type": "boolean",
+      "description": "Enable PKCE (Proof Key for Code Exchange)",
+      "default": false,
+      "sensitive": false
+    },
+    "query": {
+      "type": "object",
+      "description": "Additional authorization endpoint parameters",
+      "validation": "Record<string, string>",
+      "sensitive": false
+    },
+    "length": {
+      "type": "number",
+      "description": "PIN code length",
+      "default": 6,
+      "minimum": 4,
+      "maximum": 10,
+      "sensitive": false
+    },
+    "validatePassword": {
+      "type": "function|schema",
+      "description": "Password validation rules",
+      "sensitive": false
+    }
+  },
+  "commonScopes": {
+    "openid": "OpenID Connect authentication",
+    "profile": "User profile information",
+    "email": "User email address",
+    "offline_access": "Request refresh token",
+    "read:user": "Read user information",
+    "user:email": "Access user email",
+    "identify": "Discord identification",
+    "guilds": "Discord guilds",
+    "user-read-private": "Spotify private data",
+    "user-read-email": "Spotify email",
+    "User.Read": "Microsoft user profile"
+  },
+  "errorCodes": {
+    "invalid_request": "Request is malformed",
+    "unauthorized_client": "Client not authorized",
+    "access_denied": "User denied access",
+    "unsupported_response_type": "Response type not supported",
+    "invalid_scope": "Requested scope is invalid",
+    "server_error": "Server encountered error",
+    "temporarily_unavailable": "Service unavailable"
+  },
+  "validation": {
+    "oauth2Providers": [
+      "google",
+      "github",
+      "microsoft",
+      "apple",
+      "facebook",
+      "discord",
+      "slack",
+      "spotify",
+      "twitch",
+      "x",
+      "yahoo",
+      "linkedin",
+      "jumpcloud",
+      "keycloak",
+      "cognito"
+    ],
+    "oidcProviders": [
+      "google",
+      "microsoft",
+      "apple",
+      "facebook",
+      "slack",
+      "keycloak",
+      "cognito"
+    ],
+    "customProviders": ["password", "code"],
+    "providersRequiringSecret": [
+      "google",
+      "github",
+      "microsoft",
+      "apple",
+      "facebook",
+      "discord",
+      "slack",
+      "spotify",
+      "twitch",
+      "x",
+      "yahoo",
+      "linkedin",
+      "jumpcloud",
+      "keycloak",
+      "cognito"
+    ],
+    "pkceRequiredProviders": ["x"],
+    "pkceOptionalProviders": [
+      "google",
+      "github",
+      "microsoft",
+      "apple",
+      "facebook",
+      "discord",
+      "slack",
+      "spotify",
+      "twitch",
+      "yahoo",
+      "linkedin",
+      "jumpcloud",
+      "keycloak",
+      "cognito"
+    ]
+  }
+}

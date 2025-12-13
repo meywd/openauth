@@ -13,8 +13,8 @@ import { issuer } from "../src/issuer.js"
 import { createClient } from "../src/client.js"
 import { MemoryStorage } from "../src/storage/memory.js"
 import { createSubjects } from "../src/subject.js"
-import { D1ClientAdapter } from "../src/client/d1-adapter.js"
-import { ClientAuthenticator } from "../src/client/authenticator.js"
+import { ClientD1Adapter } from "../src/client/client-d1-adapter.js"
+import { hashClientSecret } from "../src/client/secret-generator.js"
 import { AuditService } from "../src/services/audit.js"
 
 const subjects = createSubjects({
@@ -23,7 +23,7 @@ const subjects = createSubjects({
   }),
 })
 
-// Mock D1 database
+// Mock D1 database with new schema (id, name, tenant_id)
 const createMockD1 = () => {
   const mockClients = new Map<string, any>()
 
@@ -33,32 +33,56 @@ const createMockD1 = () => {
         run: mock(async () => {
           // Handle INSERT for client creation
           if (sql.includes("INSERT INTO oauth_clients")) {
+            // New schema: id, tenant_id, name, client_secret_hash, grant_types, scopes, redirect_uris, metadata, enabled, created_at, updated_at
             const [
-              clientId,
-              secretHash,
+              id,
+              tenantId,
               name,
-              redirectUris,
+              secretHash,
               grantTypes,
               scopes,
+              redirectUris,
+              metadata,
+              enabled,
+              createdAt,
+              updatedAt,
             ] = params
-            mockClients.set(clientId, {
-              client_id: clientId,
+            mockClients.set(id, {
+              id,
+              tenant_id: tenantId,
+              name,
               client_secret_hash: secretHash,
-              client_name: name,
-              redirect_uris: redirectUris,
               grant_types: grantTypes,
               scopes: scopes,
-              created_at: Date.now(),
+              redirect_uris: redirectUris,
+              metadata: metadata,
+              enabled: enabled,
+              created_at: createdAt,
+              updated_at: updatedAt,
             })
             return { success: true, meta: { changes: 1 } }
           }
           return { success: true, meta: { changes: 1 } }
         }),
         first: mock(async () => {
-          // Handle SELECT for client lookup
-          if (sql.includes("SELECT * FROM oauth_clients")) {
+          // Handle SELECT for client lookup by id
+          if (sql.includes("SELECT * FROM oauth_clients WHERE id = ?")) {
             const clientId = params[0]
             return mockClients.get(clientId) || null
+          }
+          // Handle SELECT for name conflict check
+          if (
+            sql.includes(
+              "SELECT id FROM oauth_clients WHERE tenant_id = ? AND name = ?",
+            )
+          ) {
+            const [tenantId, name] = params
+            for (const [, client] of mockClients) {
+              if (client.tenant_id === tenantId && client.name === name) {
+                return { id: client.id }
+              }
+            }
+            return null
           }
           return null
         }),
@@ -75,7 +99,6 @@ describe("Enterprise Endpoints", () => {
   let mockAuditDb: any
   let auth: any
   let client: ReturnType<typeof createClient>
-  let authenticator: ClientAuthenticator
   let tokens: { access: string; refresh: string }
 
   beforeEach(async () => {
@@ -85,23 +108,23 @@ describe("Enterprise Endpoints", () => {
     mockClientDb = createMockD1()
     mockAuditDb = createMockD1()
 
-    const adapter = new D1ClientAdapter({ database: mockClientDb })
-    authenticator = new ClientAuthenticator({
-      adapter,
-      // Note: Must use default iterations to match issuer's authenticator
+    // Create a test client directly in the mock database
+    // The issuer will create its own ClientD1Adapter internally
+    const secretHash = await hashClientSecret("test-secret")
+    const now = Date.now()
+    mockClientDb._mockClients.set("test-client", {
+      id: "test-client",
+      tenant_id: "default",
+      name: "Test Client",
+      client_secret_hash: secretHash,
+      grant_types: JSON.stringify(["authorization_code", "refresh_token"]),
+      scopes: JSON.stringify(["openid", "profile"]),
+      redirect_uris: JSON.stringify(["http://localhost:3000/callback"]),
+      metadata: JSON.stringify({}),
+      enabled: 1,
+      created_at: now,
+      updated_at: now,
     })
-
-    // Create a test client
-    await authenticator.createClient(
-      "test-client",
-      "test-secret",
-      "Test Client",
-      {
-        redirect_uris: ["http://localhost:3000/callback"],
-        grant_types: ["authorization_code", "refresh_token"],
-        scopes: ["openid", "profile"],
-      },
-    )
 
     auth = issuer({
       storage,

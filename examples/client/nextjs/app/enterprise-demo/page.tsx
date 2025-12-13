@@ -5,6 +5,7 @@
  * 1. Feature detection (introspection/revocation availability)
  * 2. Different validation methods (introspection vs JWT)
  * 3. Graceful degradation when features are not available
+ * 4. Multi-account session management
  */
 
 import {
@@ -13,12 +14,31 @@ import {
   logout,
   performAdminAction,
 } from "../actions-with-enterprise"
+import { AccountSwitcherDropdown } from "../components/account-switcher-dropdown"
 
 export default async function EnterpriseDemoPage() {
   const authInfo = await getAuthInfo()
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "system-ui" }}>
+    <div
+      style={{ padding: "2rem", fontFamily: "system-ui", position: "relative" }}
+    >
+      {/* Account Switcher in top-right when authenticated */}
+      {authInfo.authenticated && (
+        <div
+          style={{
+            position: "absolute",
+            top: "1rem",
+            right: "1rem",
+          }}
+        >
+          <AccountSwitcherDropdown
+            apiBaseUrl="/api"
+            authorizeUrl="/authorize"
+          />
+        </div>
+      )}
+
       <h1>Enterprise Features Demo</h1>
 
       {/* Feature Availability Status */}
@@ -121,6 +141,39 @@ export default async function EnterpriseDemoPage() {
               <span style={{ color: "orange" }}>Not authenticated</span>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Multi-Account Session Management */}
+      <section style={{ marginTop: "2rem" }}>
+        <h2>Multi-Account Session Management</h2>
+        <div
+          style={{
+            background: "#f5f5f5",
+            padding: "1rem",
+            borderRadius: "8px",
+          }}
+        >
+          <p style={{ margin: "0 0 1rem" }}>
+            {authInfo.authenticated ? (
+              <>
+                <span style={{ color: "green" }}>✓</span> You are logged in. Use
+                the <strong>Account Switcher</strong> in the top-right corner
+                to:
+              </>
+            ) : (
+              <>
+                <span style={{ color: "orange" }}>○</span> Log in to access
+                multi-account features:
+              </>
+            )}
+          </p>
+          <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
+            <li>View all logged-in accounts</li>
+            <li>Switch between accounts instantly</li>
+            <li>Add additional accounts (Google-style)</li>
+            <li>Sign out individual accounts or all at once</li>
+          </ul>
         </div>
       </section>
 

@@ -317,3 +317,26 @@ export function getTheme() {
   // @ts-ignore
   return globalThis.OPENAUTH_THEME || THEME_OPENAUTH
 }
+
+/**
+ * Get theme with explicit precedence.
+ *
+ * @param explicitTheme - Theme passed explicitly (takes precedence)
+ * @returns The resolved theme
+ *
+ * @internal
+ */
+export function resolveTheme(explicitTheme?: Theme): Theme {
+  // Priority: explicit > global > default
+  return explicitTheme || getTheme()
+}
+
+/**
+ * Props for components that accept theme
+ */
+export interface ThemeProps {
+  /**
+   * Optional theme override. If not provided, falls back to global theme.
+   */
+  theme?: Theme
+}

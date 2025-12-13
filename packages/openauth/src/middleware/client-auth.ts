@@ -9,7 +9,7 @@
 
 import type { Context, Next } from "hono"
 import { ClientAuthenticator } from "../client/authenticator.js"
-import type { OAuthClient } from "../client/d1-adapter.js"
+import type { OAuthClient } from "../client/types.js"
 
 export interface ClientAuthMiddlewareOptions {
   authenticator: ClientAuthenticator
