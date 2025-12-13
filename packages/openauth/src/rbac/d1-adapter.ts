@@ -12,12 +12,10 @@ import type { D1Database } from "@cloudflare/workers-types"
 import type {
   Role,
   Permission,
-  App,
   RolePermission,
   UserRole,
 } from "../contracts/types.js"
 import type {
-  CreateAppParams,
   CreateRoleParams,
   CreatePermissionParams,
   AssignRoleParams,
@@ -34,7 +32,7 @@ import { RBACError } from "../contracts/types.js"
  * - Role expiration is checked in getUserRoles query
  *
  * TESTING CHECKLIST:
- * - Can create app, role, permission
+ * - Can create role, permission
  * - Can assign role to user
  * - Can assign permission to role
  * - Tenant isolation enforced in all queries
@@ -106,7 +104,7 @@ export class RBACAdapter {
     const result = await this.db
       .prepare(
         `
-        SELECT DISTINCT p.id, p.name, p.app_id, p.description, p.resource, p.action, p.created_at
+        SELECT DISTINCT p.id, p.name, p.client_id, p.description, p.resource, p.action, p.created_at
         FROM rbac_permissions p
         JOIN rbac_role_permissions rp ON p.id = rp.permission_id
         WHERE rp.role_id IN (${placeholders})
@@ -116,7 +114,7 @@ export class RBACAdapter {
       .all<{
         id: string
         name: string
-        app_id: string
+        client_id: string
         description: string | null
         resource: string
         action: string
@@ -128,7 +126,7 @@ export class RBACAdapter {
     return result.results.map((row) => ({
       id: row.id,
       name: row.name,
-      app_id: row.app_id,
+      client_id: row.client_id,
       description: row.description ?? undefined,
       resource: row.resource,
       action: row.action,
@@ -143,32 +141,32 @@ export class RBACAdapter {
    * filtering by tenant and app.
    *
    * @param userId - The user ID
-   * @param appId - The app ID to filter permissions
+   * @param clientId - The app ID to filter permissions
    * @param tenantId - The tenant ID for isolation
    * @returns Array of permissions for the user in the specified app
    */
-  async getUserPermissionsForApp(
+  async getUserPermissionsForClient(
     userId: string,
-    appId: string,
+    clientId: string,
     tenantId: string,
   ): Promise<Permission[]> {
     const now = Date.now()
     const result = await this.db
       .prepare(
         `
-        SELECT DISTINCT p.id, p.name, p.app_id, p.description, p.resource, p.action, p.created_at
+        SELECT DISTINCT p.id, p.name, p.client_id, p.description, p.resource, p.action, p.created_at
         FROM rbac_permissions p
         JOIN rbac_role_permissions rp ON p.id = rp.permission_id
         JOIN rbac_user_roles ur ON rp.role_id = ur.role_id
-        WHERE ur.user_id = ? AND ur.tenant_id = ? AND p.app_id = ?
+        WHERE ur.user_id = ? AND ur.tenant_id = ? AND p.client_id = ?
         AND (ur.expires_at IS NULL OR ur.expires_at > ?)
         `,
       )
-      .bind(userId, tenantId, appId, now)
+      .bind(userId, tenantId, clientId, now)
       .all<{
         id: string
         name: string
-        app_id: string
+        client_id: string
         description: string | null
         resource: string
         action: string
@@ -180,46 +178,12 @@ export class RBACAdapter {
     return result.results.map((row) => ({
       id: row.id,
       name: row.name,
-      app_id: row.app_id,
+      client_id: row.client_id,
       description: row.description ?? undefined,
       resource: row.resource,
       action: row.action,
       created_at: row.created_at,
     }))
-  }
-
-  /**
-   * Create a new app
-   *
-   * @param params - App creation parameters
-   * @returns The created app
-   */
-  async createApp(params: CreateAppParams): Promise<App> {
-    const now = Date.now()
-
-    await this.db
-      .prepare(
-        `
-        INSERT INTO rbac_apps (id, name, tenant_id, description, created_at)
-        VALUES (?, ?, ?, ?, ?)
-        `,
-      )
-      .bind(
-        params.id,
-        params.name,
-        params.tenant_id,
-        params.description ?? null,
-        now,
-      )
-      .run()
-
-    return {
-      id: params.id,
-      name: params.name,
-      tenant_id: params.tenant_id,
-      description: params.description,
-      created_at: now,
-    }
   }
 
   /**
@@ -274,14 +238,14 @@ export class RBACAdapter {
     await this.db
       .prepare(
         `
-        INSERT INTO rbac_permissions (id, name, app_id, description, resource, action, created_at)
+        INSERT INTO rbac_permissions (id, name, client_id, description, resource, action, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         `,
       )
       .bind(
         id,
         params.name,
-        params.app_id,
+        params.client_id,
         params.description ?? null,
         params.resource,
         params.action,
@@ -292,7 +256,7 @@ export class RBACAdapter {
     return {
       id,
       name: params.name,
-      app_id: params.app_id,
+      client_id: params.client_id,
       description: params.description,
       resource: params.resource,
       action: params.action,
@@ -446,42 +410,6 @@ export class RBACAdapter {
   }
 
   /**
-   * List all apps for a tenant
-   *
-   * @param tenantId - The tenant ID
-   * @returns Array of apps
-   */
-  async listApps(tenantId: string): Promise<App[]> {
-    const result = await this.db
-      .prepare(
-        `
-        SELECT id, name, tenant_id, description, created_at
-        FROM rbac_apps
-        WHERE tenant_id = ?
-        ORDER BY created_at DESC
-        `,
-      )
-      .bind(tenantId)
-      .all<{
-        id: string
-        name: string
-        tenant_id: string
-        description: string | null
-        created_at: number
-      }>()
-
-    if (!result.results) return []
-
-    return result.results.map((row) => ({
-      id: row.id,
-      name: row.name,
-      tenant_id: row.tenant_id,
-      description: row.description ?? undefined,
-      created_at: row.created_at,
-    }))
-  }
-
-  /**
    * List all roles for a tenant
    *
    * @param tenantId - The tenant ID
@@ -524,24 +452,24 @@ export class RBACAdapter {
   /**
    * List all permissions for an app
    *
-   * @param appId - The app ID
+   * @param clientId - The app ID
    * @returns Array of permissions
    */
-  async listPermissions(appId: string): Promise<Permission[]> {
+  async listPermissions(clientId: string): Promise<Permission[]> {
     const result = await this.db
       .prepare(
         `
-        SELECT id, name, app_id, description, resource, action, created_at
+        SELECT id, name, client_id, description, resource, action, created_at
         FROM rbac_permissions
-        WHERE app_id = ?
+        WHERE client_id = ?
         ORDER BY created_at DESC
         `,
       )
-      .bind(appId)
+      .bind(clientId)
       .all<{
         id: string
         name: string
-        app_id: string
+        client_id: string
         description: string | null
         resource: string
         action: string
@@ -553,7 +481,7 @@ export class RBACAdapter {
     return result.results.map((row) => ({
       id: row.id,
       name: row.name,
-      app_id: row.app_id,
+      client_id: row.client_id,
       description: row.description ?? undefined,
       resource: row.resource,
       action: row.action,
@@ -571,7 +499,7 @@ export class RBACAdapter {
     const result = await this.db
       .prepare(
         `
-        SELECT p.id, p.name, p.app_id, p.description, p.resource, p.action, p.created_at
+        SELECT p.id, p.name, p.client_id, p.description, p.resource, p.action, p.created_at
         FROM rbac_permissions p
         JOIN rbac_role_permissions rp ON p.id = rp.permission_id
         WHERE rp.role_id = ?
@@ -582,7 +510,7 @@ export class RBACAdapter {
       .all<{
         id: string
         name: string
-        app_id: string
+        client_id: string
         description: string | null
         resource: string
         action: string
@@ -594,7 +522,7 @@ export class RBACAdapter {
     return result.results.map((row) => ({
       id: row.id,
       name: row.name,
-      app_id: row.app_id,
+      client_id: row.client_id,
       description: row.description ?? undefined,
       resource: row.resource,
       action: row.action,
@@ -639,42 +567,6 @@ export class RBACAdapter {
       expires_at: row.expires_at ?? undefined,
       assigned_by: row.assigned_by,
     }))
-  }
-
-  /**
-   * Get an app by ID
-   *
-   * @param appId - The app ID
-   * @param tenantId - The tenant ID for isolation
-   * @returns The app or null if not found
-   */
-  async getApp(appId: string, tenantId: string): Promise<App | null> {
-    const result = await this.db
-      .prepare(
-        `
-        SELECT id, name, tenant_id, description, created_at
-        FROM rbac_apps
-        WHERE id = ? AND tenant_id = ?
-        `,
-      )
-      .bind(appId, tenantId)
-      .first<{
-        id: string
-        name: string
-        tenant_id: string
-        description: string | null
-        created_at: number
-      }>()
-
-    if (!result) return null
-
-    return {
-      id: result.id,
-      name: result.name,
-      tenant_id: result.tenant_id,
-      description: result.description ?? undefined,
-      created_at: result.created_at,
-    }
   }
 
   /**
@@ -727,7 +619,7 @@ export class RBACAdapter {
     const result = await this.db
       .prepare(
         `
-        SELECT id, name, app_id, description, resource, action, created_at
+        SELECT id, name, client_id, description, resource, action, created_at
         FROM rbac_permissions
         WHERE id = ?
         `,
@@ -736,7 +628,7 @@ export class RBACAdapter {
       .first<{
         id: string
         name: string
-        app_id: string
+        client_id: string
         description: string | null
         resource: string
         action: string
@@ -748,7 +640,7 @@ export class RBACAdapter {
     return {
       id: result.id,
       name: result.name,
-      app_id: result.app_id,
+      client_id: result.client_id,
       description: result.description ?? undefined,
       resource: result.resource,
       action: result.action,
@@ -850,19 +742,19 @@ export class RBACAdapter {
    * Delete a permission and remove from all roles
    *
    * @param permissionId - The permission ID
-   * @param appId - Optional app ID to verify ownership
+   * @param clientId - Optional app ID to verify ownership
    * @throws RBACError if permission not found
    */
-  async deletePermission(permissionId: string, appId?: string): Promise<void> {
+  async deletePermission(permissionId: string, clientId?: string): Promise<void> {
     const permission = await this.getPermission(permissionId)
     if (!permission) {
       throw new RBACError("permission_not_found", "Permission not found")
     }
 
-    if (appId && permission.app_id !== appId) {
+    if (clientId && permission.client_id !== clientId) {
       throw new RBACError(
         "permission_not_found",
-        "Permission not found in specified app",
+        "Permission not found in specified client",
       )
     }
 

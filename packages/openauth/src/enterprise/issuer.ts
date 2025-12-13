@@ -358,7 +358,7 @@ export function createMultiTenantIssuer<
       if (config.rbacService && (value as any).userID) {
         rbacClaims = await config.rbacService.enrichTokenClaims({
           userId: (value as any).userID,
-          appId: authorization?.client_id || "default",
+          clientId: authorization?.client_id || "default",
           tenantId: tenant.id,
         })
       }

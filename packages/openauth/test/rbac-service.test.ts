@@ -14,7 +14,6 @@ import type { StorageAdapter } from "../src/storage/storage.js"
 import type {
   Role,
   Permission,
-  App,
   UserRole,
   RolePermission,
 } from "../src/contracts/types.js"
@@ -104,15 +103,6 @@ const createMockStorage = () => {
 // Test Data Factories
 // ============================================
 
-const createTestApp = (overrides?: Partial<App>): App => ({
-  id: "test-app",
-  name: "Test App",
-  tenant_id: "tenant-1",
-  description: "A test application",
-  created_at: Date.now(),
-  ...overrides,
-})
-
 const createTestRole = (overrides?: Partial<Role>): Role => ({
   id: "role-1",
   name: "admin",
@@ -127,7 +117,7 @@ const createTestRole = (overrides?: Partial<Role>): Role => ({
 const createTestPermission = (overrides?: Partial<Permission>): Permission => ({
   id: "perm-1",
   name: "posts:read",
-  app_id: "test-app",
+  client_id: "test-app",
   description: "Read posts",
   resource: "posts",
   action: "read",
@@ -166,38 +156,6 @@ describe("RBACAdapter", () => {
   // Create Operations
   // ==========================================
 
-  describe("createApp", () => {
-    test("creates app with correct parameters", async () => {
-      const prepareSpy = spyOn(mockDb, "prepare")
-
-      const app = await adapter.createApp({
-        id: "app-1",
-        name: "My App",
-        tenant_id: "tenant-1",
-        description: "Test app",
-      })
-
-      expect(prepareSpy).toHaveBeenCalled()
-      const sql = prepareSpy.mock.calls[0][0]
-      expect(sql).toContain("INSERT INTO rbac_apps")
-      expect(sql).toContain("id, name, tenant_id, description, created_at")
-
-      expect(app.id).toBe("app-1")
-      expect(app.name).toBe("My App")
-      expect(app.tenant_id).toBe("tenant-1")
-      expect(app.description).toBe("Test app")
-    })
-
-    test("creates app without optional description", async () => {
-      const app = await adapter.createApp({
-        id: "app-2",
-        name: "App Without Description",
-        tenant_id: "tenant-1",
-      })
-
-      expect(app.description).toBeUndefined()
-    })
-  })
 
   describe("createRole", () => {
     test("creates role with generated UUID", async () => {
@@ -237,7 +195,7 @@ describe("RBACAdapter", () => {
 
       const permission = await adapter.createPermission({
         name: "users:write",
-        app_id: "app-1",
+        client_id: "app-1",
         resource: "users",
         action: "write",
         description: "Write users",
@@ -249,7 +207,7 @@ describe("RBACAdapter", () => {
 
       expect(permission.id).toBeDefined()
       expect(permission.name).toBe("users:write")
-      expect(permission.app_id).toBe("app-1")
+      expect(permission.client_id).toBe("app-1")
       expect(permission.resource).toBe("users")
       expect(permission.action).toBe("write")
     })
@@ -437,91 +395,7 @@ describe("RBACAdapter", () => {
     })
   })
 
-  describe("getUserPermissionsForApp", () => {
-    test("returns permissions with combined query", async () => {
-      const now = Date.now()
 
-      const permissions = [
-        {
-          id: "perm-1",
-          name: "posts:read",
-          app_id: "app-1",
-          description: "Read posts",
-          resource: "posts",
-          action: "read",
-          created_at: now,
-        },
-        {
-          id: "perm-2",
-          name: "posts:write",
-          app_id: "app-1",
-          description: null,
-          resource: "posts",
-          action: "write",
-          created_at: now,
-        },
-      ]
-
-      mockDb._setResults(permissions)
-
-      const prepareSpy = spyOn(mockDb, "prepare")
-
-      const result = await adapter.getUserPermissionsForApp(
-        "user-1",
-        "app-1",
-        "tenant-1",
-      )
-
-      expect(result).toHaveLength(2)
-      expect(result[0].name).toBe("posts:read")
-      expect(result[1].name).toBe("posts:write")
-      expect(result[1].description).toBeUndefined()
-
-      // Verify query filters by user, tenant, and app
-      const sql = prepareSpy.mock.calls[0][0]
-      expect(sql).toContain(
-        "WHERE ur.user_id = ? AND ur.tenant_id = ? AND p.app_id = ?",
-      )
-      expect(sql).toContain("ur.expires_at IS NULL OR ur.expires_at > ?")
-    })
-
-    test("enforces tenant isolation in combined query", async () => {
-      mockDb._setResults([])
-
-      const prepareSpy = spyOn(mockDb, "prepare")
-
-      await adapter.getUserPermissionsForApp("user-1", "app-1", "tenant-1")
-
-      const sql = prepareSpy.mock.calls[0][0]
-      expect(sql).toContain("ur.tenant_id = ?")
-    })
-  })
-
-  describe("listApps", () => {
-    test("lists apps for tenant", async () => {
-      const apps = [
-        {
-          id: "app-1",
-          name: "App 1",
-          tenant_id: "tenant-1",
-          description: "First app",
-          created_at: Date.now(),
-        },
-      ]
-
-      mockDb._setResults(apps)
-
-      const prepareSpy = spyOn(mockDb, "prepare")
-
-      const result = await adapter.listApps("tenant-1")
-
-      expect(result).toHaveLength(1)
-      expect(result[0].name).toBe("App 1")
-
-      const sql = prepareSpy.mock.calls[0][0]
-      expect(sql).toContain("WHERE tenant_id = ?")
-    })
-  })
 
   describe("listRoles", () => {
     test("lists roles for tenant", async () => {
@@ -557,7 +431,7 @@ describe("RBACAdapter", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -575,7 +449,7 @@ describe("RBACAdapter", () => {
       expect(result[0].name).toBe("posts:read")
 
       const sql = prepareSpy.mock.calls[0][0]
-      expect(sql).toContain("WHERE app_id = ?")
+      expect(sql).toContain("WHERE client_id = ?")
     })
   })
 
@@ -585,7 +459,7 @@ describe("RBACAdapter", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -635,37 +509,6 @@ describe("RBACAdapter", () => {
     })
   })
 
-  describe("getApp", () => {
-    test("gets app by id with tenant isolation", async () => {
-      const app = {
-        id: "app-1",
-        name: "App 1",
-        tenant_id: "tenant-1",
-        description: "Test",
-        created_at: Date.now(),
-      }
-
-      mockDb._setResults([app])
-
-      const prepareSpy = spyOn(mockDb, "prepare")
-
-      const result = await adapter.getApp("app-1", "tenant-1")
-
-      expect(result).not.toBeNull()
-      expect(result?.name).toBe("App 1")
-
-      const sql = prepareSpy.mock.calls[0][0]
-      expect(sql).toContain("WHERE id = ? AND tenant_id = ?")
-    })
-
-    test("returns null if app not found", async () => {
-      mockDb._setResults([])
-
-      const result = await adapter.getApp("nonexistent", "tenant-1")
-
-      expect(result).toBeNull()
-    })
-  })
 
   describe("getRole", () => {
     test("gets role by id with tenant isolation", async () => {
@@ -698,7 +541,7 @@ describe("RBACAdapter", () => {
       const permission = {
         id: "perm-1",
         name: "posts:read",
-        app_id: "app-1",
+        client_id: "app-1",
         description: "Read",
         resource: "posts",
         action: "read",
@@ -725,7 +568,7 @@ describe("RBACAdapter", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -887,7 +730,7 @@ describe("RBACAdapter", () => {
       const permission = {
         id: "perm-1",
         name: "posts:read",
-        app_id: "app-1",
+        client_id: "app-1",
         description: "Read",
         resource: "posts",
         action: "read",
@@ -920,11 +763,11 @@ describe("RBACAdapter", () => {
       )
     })
 
-    test("throws error when permission app_id does not match", async () => {
+    test("throws error when permission client_id does not match", async () => {
       const permission = {
         id: "perm-1",
         name: "posts:read",
-        app_id: "app-1",
+        client_id: "app-1",
         description: "Read",
         resource: "posts",
         action: "read",
@@ -935,7 +778,7 @@ describe("RBACAdapter", () => {
 
       await expect(
         adapter.deletePermission("perm-1", "different-app"),
-      ).rejects.toThrow("Permission not found in specified app")
+      ).rejects.toThrow("Permission not found in specified client")
     })
   })
 
@@ -999,7 +842,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read posts",
           resource: "posts",
           action: "read",
@@ -1011,7 +854,7 @@ describe("RBACServiceImpl", () => {
 
       const result = await service.checkPermission({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permission: "posts:read",
       })
@@ -1024,7 +867,7 @@ describe("RBACServiceImpl", () => {
 
       const result = await service.checkPermission({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permission: "posts:delete",
       })
@@ -1037,7 +880,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1052,7 +895,7 @@ describe("RBACServiceImpl", () => {
       // First call - should query database
       await service.checkPermission({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permission: "posts:read",
       })
@@ -1062,7 +905,7 @@ describe("RBACServiceImpl", () => {
       // Second call - should use cache
       await service.checkPermission({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permission: "posts:read",
       })
@@ -1078,7 +921,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1093,7 +936,7 @@ describe("RBACServiceImpl", () => {
       // First call
       await service.checkPermission({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permission: "posts:read",
       })
@@ -1104,7 +947,7 @@ describe("RBACServiceImpl", () => {
       // Second call - should refresh cache
       await service.checkPermission({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permission: "posts:read",
       })
@@ -1120,7 +963,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1129,7 +972,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-2",
           name: "posts:write",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Write",
           resource: "posts",
           action: "write",
@@ -1141,7 +984,7 @@ describe("RBACServiceImpl", () => {
 
       const results = await service.checkPermissions({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permissions: ["posts:read", "posts:write", "posts:delete"],
       })
@@ -1156,7 +999,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1171,7 +1014,7 @@ describe("RBACServiceImpl", () => {
       // First batch check
       await service.checkPermissions({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permissions: ["posts:read", "posts:write"],
       })
@@ -1181,7 +1024,7 @@ describe("RBACServiceImpl", () => {
       // Second batch check - should use cache
       await service.checkPermissions({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
         permissions: ["posts:read"],
       })
@@ -1196,7 +1039,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1205,7 +1048,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-2",
           name: "posts:write",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Write",
           resource: "posts",
           action: "write",
@@ -1217,7 +1060,7 @@ describe("RBACServiceImpl", () => {
 
       const result = await service.getUserPermissions({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
       })
 
@@ -1229,7 +1072,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1243,7 +1086,7 @@ describe("RBACServiceImpl", () => {
 
       await service.getUserPermissions({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
       })
 
@@ -1313,7 +1156,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1322,7 +1165,7 @@ describe("RBACServiceImpl", () => {
         {
           id: "perm-2",
           name: "posts:write",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Write",
           resource: "posts",
           action: "write",
@@ -1335,7 +1178,7 @@ describe("RBACServiceImpl", () => {
 
       const result = await service.enrichTokenClaims({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
       })
 
@@ -1360,7 +1203,7 @@ describe("RBACServiceImpl", () => {
       const permissions = Array.from({ length: 60 }, (_, i) => ({
         id: `perm-${i}`,
         name: `permission:${i}`,
-        app_id: "app-1",
+        client_id: "app-1",
         description: `Permission ${i}`,
         resource: "resource",
         action: "action",
@@ -1371,7 +1214,7 @@ describe("RBACServiceImpl", () => {
 
       const result = await service.enrichTokenClaims({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
       })
 
@@ -1397,7 +1240,7 @@ describe("RBACServiceImpl", () => {
       const permissions = Array.from({ length: 60 }, (_, i) => ({
         id: `perm-${i}`,
         name: `permission:${i}`,
-        app_id: "app-1",
+        client_id: "app-1",
         description: `Permission ${i}`,
         resource: "resource",
         action: "action",
@@ -1408,7 +1251,7 @@ describe("RBACServiceImpl", () => {
 
       await service.enrichTokenClaims({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
       })
 
@@ -1540,24 +1383,6 @@ describe("RBACServiceImpl", () => {
   // ==========================================
 
   describe("admin operations", () => {
-    test("creates app via adapter", async () => {
-      const createAppSpy = spyOn(adapter, "createApp").mockResolvedValue(
-        createTestApp(),
-      )
-
-      await service.createApp({
-        id: "app-1",
-        name: "My App",
-        tenantId: "tenant-1",
-      })
-
-      expect(createAppSpy).toHaveBeenCalledWith({
-        id: "app-1",
-        name: "My App",
-        tenant_id: "tenant-1",
-        description: undefined,
-      })
-    })
 
     test("creates role via adapter", async () => {
       const createRoleSpy = spyOn(adapter, "createRole").mockResolvedValue(
@@ -1586,29 +1411,20 @@ describe("RBACServiceImpl", () => {
 
       await service.createPermission({
         name: "users:write",
-        appId: "app-1",
+        clientId: "app-1",
         resource: "users",
         action: "write",
       })
 
       expect(createPermissionSpy).toHaveBeenCalledWith({
         name: "users:write",
-        app_id: "app-1",
+        client_id: "app-1",
         resource: "users",
         action: "write",
         description: undefined,
       })
     })
 
-    test("lists apps via adapter", async () => {
-      const listAppsSpy = spyOn(adapter, "listApps").mockResolvedValue([
-        createTestApp(),
-      ])
-
-      await service.listApps("tenant-1")
-
-      expect(listAppsSpy).toHaveBeenCalledWith("tenant-1")
-    })
 
     test("lists roles via adapter", async () => {
       const listRolesSpy = spyOn(adapter, "listRoles").mockResolvedValue([
@@ -1773,7 +1589,7 @@ describe("Token Enricher", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1785,7 +1601,7 @@ describe("Token Enricher", () => {
 
       const claims = await enrichTokenWithRBAC(service, {
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
       })
 
@@ -1799,7 +1615,7 @@ describe("Token Enricher", () => {
       const permissions = Array.from({ length: 60 }, (_, i) => ({
         id: `perm-${i}`,
         name: `permission:${i}`,
-        app_id: "app-1",
+        client_id: "app-1",
         description: `Permission ${i}`,
         resource: "resource",
         action: "action",
@@ -1812,7 +1628,7 @@ describe("Token Enricher", () => {
         service,
         {
           userId: "user-1",
-          appId: "app-1",
+          clientId: "app-1",
           tenantId: "tenant-1",
         },
         { maxPermissionsInToken: 25 },
@@ -1827,7 +1643,7 @@ describe("Token Enricher", () => {
       const permissions = Array.from({ length: 60 }, (_, i) => ({
         id: `perm-${i}`,
         name: `permission:${i}`,
-        app_id: "app-1",
+        client_id: "app-1",
         description: `Permission ${i}`,
         resource: "resource",
         action: "action",
@@ -1840,7 +1656,7 @@ describe("Token Enricher", () => {
         service,
         {
           userId: "user-1",
-          appId: "app-1",
+          clientId: "app-1",
           tenantId: "tenant-1",
         },
         { maxPermissionsInToken: 25 },
@@ -1861,7 +1677,7 @@ describe("Token Enricher", () => {
         {
           id: "perm-1",
           name: "posts:read",
-          app_id: "app-1",
+          client_id: "app-1",
           description: "Read",
           resource: "posts",
           action: "read",
@@ -1877,7 +1693,7 @@ describe("Token Enricher", () => {
 
       const claims = await enricher({
         userId: "user-1",
-        appId: "app-1",
+        clientId: "app-1",
         tenantId: "tenant-1",
       })
 

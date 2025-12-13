@@ -207,18 +207,10 @@ export interface Role {
 export interface Permission {
   id: string
   name: string
-  app_id: string
+  client_id: string
   description?: string
   resource: string
   action: string
-  created_at: number
-}
-
-export interface App {
-  id: string
-  name: string
-  tenant_id: string
-  description?: string
   created_at: number
 }
 
@@ -257,21 +249,21 @@ export interface RBACService {
   // Permission checking
   checkPermission(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
     permission: string
   }): Promise<boolean>
 
   checkPermissions(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
     permissions: string[]
   }): Promise<Record<string, boolean>>
 
   getUserPermissions(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
   }): Promise<string[]>
 
@@ -280,18 +272,11 @@ export interface RBACService {
   // Token enrichment
   enrichTokenClaims(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
   }): Promise<RBACClaims>
 
   // Admin operations
-  createApp(params: {
-    id: string
-    name: string
-    tenantId: string
-    description?: string
-  }): Promise<App>
-
   createRole(params: {
     name: string
     tenantId: string
@@ -301,7 +286,7 @@ export interface RBACService {
 
   createPermission(params: {
     name: string
-    appId: string
+    clientId: string
     resource: string
     action: string
     description?: string
@@ -333,9 +318,8 @@ export interface RBACService {
   }): Promise<void>
 
   // Listing operations
-  listApps(tenantId: string): Promise<App[]>
   listRoles(tenantId: string): Promise<Role[]>
-  listPermissions(appId: string): Promise<Permission[]>
+  listPermissions(clientId: string): Promise<Permission[]>
   listRolePermissions(roleId: string): Promise<Permission[]>
   listUserRoles(userId: string, tenantId: string): Promise<UserRole[]>
 

@@ -1486,7 +1486,7 @@ describe("Enterprise Issuer - RBAC Token Enrichment", () => {
 
     // Mock RBAC service
     mockRbacService = {
-      enrichTokenClaims: mock(async ({ userId, appId, tenantId }) => {
+      enrichTokenClaims: mock(async ({ userId, clientId, tenantId }) => {
         // Return different roles based on user
         if (userId === "admin-user") {
           return {
@@ -1511,7 +1511,7 @@ describe("Enterprise Issuer - RBAC Token Enrichment", () => {
   test("enriches token claims with RBAC roles and permissions for regular user", async () => {
     const claims = await mockRbacService.enrichTokenClaims({
       userId: "user-123",
-      appId: "test-app",
+      clientId: "test-app",
       tenantId: tenant.id,
     })
 
@@ -1522,7 +1522,7 @@ describe("Enterprise Issuer - RBAC Token Enrichment", () => {
   test("enriches token claims with RBAC roles and permissions for admin user", async () => {
     const claims = await mockRbacService.enrichTokenClaims({
       userId: "admin-user",
-      appId: "test-app",
+      clientId: "test-app",
       tenantId: tenant.id,
     })
 
@@ -1536,7 +1536,7 @@ describe("Enterprise Issuer - RBAC Token Enrichment", () => {
   test("creates enterprise auth result with RBAC claims", async () => {
     const claims = await mockRbacService.enrichTokenClaims({
       userId: "user-123",
-      appId: "test-app",
+      clientId: "test-app",
       tenantId: tenant.id,
     })
 
@@ -1568,7 +1568,7 @@ describe("Enterprise Issuer - RBAC Token Enrichment", () => {
   test("enriches subject properties with tenant and RBAC data", async () => {
     const claims = await mockRbacService.enrichTokenClaims({
       userId: "user-123",
-      appId: "test-app",
+      clientId: "test-app",
       tenantId: tenant.id,
     })
 

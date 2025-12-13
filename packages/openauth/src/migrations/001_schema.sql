@@ -211,23 +211,6 @@ CREATE INDEX IF NOT EXISTS idx_identity_providers_type ON identity_providers(typ
 CREATE INDEX IF NOT EXISTS idx_identity_providers_tenant_order ON identity_providers(tenant_id, display_order, name);
 
 -- ============================================
--- RBAC: APPS
--- ============================================
-
--- Applications that define their own permission sets
-CREATE TABLE IF NOT EXISTS rbac_apps (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    tenant_id TEXT NOT NULL,
-    description TEXT,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_rbac_apps_tenant ON rbac_apps(tenant_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_rbac_apps_name_tenant ON rbac_apps(name, tenant_id);
-
--- ============================================
 -- RBAC: ROLES
 -- ============================================
 
@@ -260,19 +243,20 @@ VALUES
 -- ============================================
 
 -- Granular access controls (resource + action)
+-- Permissions are scoped to OAuth clients
 CREATE TABLE IF NOT EXISTS rbac_permissions (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    app_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
     description TEXT,
     resource TEXT NOT NULL,
     action TEXT NOT NULL,
     created_at INTEGER NOT NULL,
-    FOREIGN KEY (app_id) REFERENCES rbac_apps(id) ON DELETE CASCADE
+    FOREIGN KEY (client_id) REFERENCES oauth_clients(id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_rbac_permissions_name_app ON rbac_permissions(name, app_id);
-CREATE INDEX IF NOT EXISTS idx_rbac_permissions_app ON rbac_permissions(app_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rbac_permissions_name_client ON rbac_permissions(name, client_id);
+CREATE INDEX IF NOT EXISTS idx_rbac_permissions_client ON rbac_permissions(client_id);
 CREATE INDEX IF NOT EXISTS idx_rbac_permissions_resource ON rbac_permissions(resource);
 CREATE INDEX IF NOT EXISTS idx_rbac_permissions_resource_action ON rbac_permissions(resource, action);
 
@@ -325,7 +309,7 @@ CREATE VIEW IF NOT EXISTS user_permissions AS
 SELECT DISTINCT
     ur.user_id,
     ur.tenant_id,
-    p.app_id,
+    p.client_id,
     p.name AS permission_name,
     p.resource,
     p.action,

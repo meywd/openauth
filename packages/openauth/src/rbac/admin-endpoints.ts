@@ -1,7 +1,7 @@
 /**
  * Admin Management API Endpoints for RBAC
  *
- * Provides HTTP endpoints for managing apps, roles, permissions, and assignments.
+ * Provides HTTP endpoints for managing roles, permissions, and assignments.
  * All endpoints require admin access.
  *
  * @packageDocumentation
@@ -24,15 +24,6 @@ export interface AdminContext {
 }
 
 /**
- * Request body for creating an app
- */
-interface CreateAppBody {
-  id: string
-  name: string
-  description?: string
-}
-
-/**
  * Request body for creating a role
  */
 interface CreateRoleBody {
@@ -43,10 +34,10 @@ interface CreateRoleBody {
 
 /**
  * Request body for creating a permission
+ * Note: clientId is taken from route parameter
  */
 interface CreatePermissionBody {
   name: string
-  appId: string
   resource: string
   action: string
   description?: string
@@ -71,12 +62,11 @@ interface AssignPermissionBody {
  * Create RBAC admin management endpoints
  *
  * TESTING CHECKLIST:
- * - POST /apps - Create app
- * - GET /apps - List apps
  * - POST /roles - Create role
  * - GET /roles - List roles
- * - POST /permissions - Create permission
- * - GET /permissions - List permissions (query: appId)
+ * - POST /clients/:clientId/permissions - Create permission
+ * - GET /clients/:clientId/permissions - List permissions
+ * - DELETE /clients/:clientId/permissions/:permissionId - Delete permission
  * - POST /users/:userId/roles - Assign role to user
  * - DELETE /users/:userId/roles/:roleId - Remove role from user
  * - POST /roles/:roleId/permissions - Assign permission to role
@@ -121,118 +111,6 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
     }
 
     await next()
-  })
-
-  // ==========================================
-  // App Management
-  // ==========================================
-
-  /**
-   * POST /apps - Create a new app
-   *
-   * Request body:
-   *   {
-   *     "id": "my-app",
-   *     "name": "My Application",
-   *     "description": "Description of my app"
-   *   }
-   *
-   * Response:
-   *   {
-   *     "id": "my-app",
-   *     "name": "My Application",
-   *     "tenant_id": "tenant-1",
-   *     "description": "Description of my app",
-   *     "created_at": 1699999999999
-   *   }
-   */
-  router.post("/apps", async (c) => {
-    const tenantId = c.get("tenantId")
-
-    let body: CreateAppBody
-    try {
-      body = await c.req.json<CreateAppBody>()
-    } catch {
-      return c.json({ error: "Bad Request", message: "Invalid JSON body" }, 400)
-    }
-
-    if (!body.id || typeof body.id !== "string") {
-      return c.json(
-        {
-          error: "Bad Request",
-          message: "id is required and must be a string",
-        },
-        400,
-      )
-    }
-
-    if (!body.name || typeof body.name !== "string") {
-      return c.json(
-        {
-          error: "Bad Request",
-          message: "name is required and must be a string",
-        },
-        400,
-      )
-    }
-
-    // Validate app ID format (alphanumeric, hyphens, underscores)
-    if (!/^[a-zA-Z0-9_-]+$/.test(body.id)) {
-      return c.json(
-        {
-          error: "Bad Request",
-          message:
-            "id must contain only alphanumeric characters, hyphens, and underscores",
-        },
-        400,
-      )
-    }
-
-    try {
-      const app = await service.createApp({
-        id: body.id,
-        name: body.name,
-        tenantId,
-        description: body.description,
-      })
-
-      return c.json(app, 201)
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("UNIQUE constraint")
-      ) {
-        return c.json(
-          { error: "Conflict", message: "App with this ID already exists" },
-          409,
-        )
-      }
-      throw error
-    }
-  })
-
-  /**
-   * GET /apps - List all apps for the tenant
-   *
-   * Response:
-   *   {
-   *     "apps": [
-   *       {
-   *         "id": "my-app",
-   *         "name": "My Application",
-   *         "tenant_id": "tenant-1",
-   *         "description": "Description",
-   *         "created_at": 1699999999999
-   *       }
-   *     ]
-   *   }
-   */
-  router.get("/apps", async (c) => {
-    const tenantId = c.get("tenantId")
-
-    const apps = await service.listApps(tenantId)
-
-    return c.json({ apps })
   })
 
   // ==========================================
@@ -329,16 +207,15 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
   })
 
   // ==========================================
-  // Permission Management
+  // Permission Management (nested under clients)
   // ==========================================
 
   /**
-   * POST /permissions - Create a new permission
+   * POST /clients/:clientId/permissions - Create a new permission
    *
    * Request body:
    *   {
    *     "name": "posts:read",
-   *     "appId": "my-app",
    *     "resource": "posts",
    *     "action": "read",
    *     "description": "Read blog posts"
@@ -348,14 +225,23 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
    *   {
    *     "id": "perm-uuid",
    *     "name": "posts:read",
-   *     "app_id": "my-app",
+   *     "client_id": "my-app",
    *     "resource": "posts",
    *     "action": "read",
    *     "description": "Read blog posts",
    *     "created_at": 1699999999999
    *   }
    */
-  router.post("/permissions", async (c) => {
+  router.post("/clients/:clientId/permissions", async (c) => {
+    const clientId = c.req.param("clientId")
+
+    if (!clientId) {
+      return c.json(
+        { error: "Bad Request", message: "clientId is required" },
+        400,
+      )
+    }
+
     let body: CreatePermissionBody
     try {
       body = await c.req.json<CreatePermissionBody>()
@@ -368,16 +254,6 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
         {
           error: "Bad Request",
           message: "name is required and must be a string",
-        },
-        400,
-      )
-    }
-
-    if (!body.appId || typeof body.appId !== "string") {
-      return c.json(
-        {
-          error: "Bad Request",
-          message: "appId is required and must be a string",
         },
         400,
       )
@@ -417,7 +293,7 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
 
     const permission = await service.createPermission({
       name: body.name,
-      appId: body.appId,
+      clientId,
       resource: body.resource,
       action: body.action,
       description: body.description,
@@ -427,10 +303,7 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
   })
 
   /**
-   * GET /permissions - List permissions for an app
-   *
-   * Query parameters:
-   *   appId - Required, the app ID to list permissions for
+   * GET /clients/:clientId/permissions - List permissions for a client
    *
    * Response:
    *   {
@@ -438,7 +311,7 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
    *       {
    *         "id": "perm-uuid",
    *         "name": "posts:read",
-   *         "app_id": "my-app",
+   *         "client_id": "my-app",
    *         "resource": "posts",
    *         "action": "read",
    *         "description": "Read blog posts",
@@ -447,17 +320,17 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
    *     ]
    *   }
    */
-  router.get("/permissions", async (c) => {
-    const appId = c.req.query("appId")
+  router.get("/clients/:clientId/permissions", async (c) => {
+    const clientId = c.req.param("clientId")
 
-    if (!appId) {
+    if (!clientId) {
       return c.json(
-        { error: "Bad Request", message: "appId query parameter is required" },
+        { error: "Bad Request", message: "clientId is required" },
         400,
       )
     }
 
-    const permissions = await service.listPermissions(appId)
+    const permissions = await service.listPermissions(clientId)
 
     return c.json({ permissions })
   })
@@ -717,7 +590,7 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
    *       {
    *         "id": "perm-uuid",
    *         "name": "posts:read",
-   *         "app_id": "my-app",
+   *         "client_id": "my-app",
    *         "resource": "posts",
    *         "action": "read",
    *         "description": "Read blog posts",
@@ -763,7 +636,7 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
    *       {
    *         "id": "perm-uuid",
    *         "name": "posts:read",
-   *         "app_id": "my-app",
+   *         "client_id": "my-app",
    *         "resource": "posts",
    *         "action": "read",
    *         "description": "Read blog posts",
@@ -922,11 +795,11 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
   })
 
   // ==========================================
-  // Single Permission Operations
+  // Single Permission Operations (nested under clients)
   // ==========================================
 
   /**
-   * DELETE /permissions/:permissionId - Delete a permission
+   * DELETE /clients/:clientId/permissions/:permissionId - Delete a permission
    *
    * Cascades to delete:
    *   - All role permission assignments
@@ -936,8 +809,16 @@ export function rbacAdminEndpoints(service: RBACService): Hono<AdminContext> {
    * Errors:
    *   - 404: Permission not found
    */
-  router.delete("/permissions/:permissionId", async (c) => {
+  router.delete("/clients/:clientId/permissions/:permissionId", async (c) => {
+    const clientId = c.req.param("clientId")
     const permissionId = c.req.param("permissionId")
+
+    if (!clientId) {
+      return c.json(
+        { error: "Bad Request", message: "clientId is required" },
+        400,
+      )
+    }
 
     if (!permissionId) {
       return c.json(

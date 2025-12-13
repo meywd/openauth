@@ -39,7 +39,7 @@
  * // Check permissions in your application
  * const hasAccess = await service.checkPermission({
  *   userId: "user-123",
- *   appId: "my-app",
+ *   clientId: "my-app",
  *   tenantId: "tenant-1",
  *   permission: "posts:read",
  * })
@@ -47,7 +47,7 @@
  * // Enrich tokens with RBAC claims
  * const claims = await enrichTokenWithRBAC(service, {
  *   userId: "user-123",
- *   appId: "my-app",
+ *   clientId: "my-app",
  *   tenantId: "tenant-1",
  * })
  * // { roles: ["editor"], permissions: ["posts:read", "posts:write"] }
@@ -58,7 +58,7 @@
  * ```
  * Tenant
  *   |
- *   +-- App (defines permissions)
+ *   +-- OAuth Client (defines permissions)
  *   |     |
  *   |     +-- Permission (resource:action)
  *   |
@@ -77,14 +77,13 @@
  * |----------|--------|-------------|
  * | `/rbac/check` | POST | Check single permission |
  * | `/rbac/check/batch` | POST | Check multiple permissions |
- * | `/rbac/permissions` | GET | Get user permissions for app |
+ * | `/rbac/permissions` | GET | Get user permissions for client |
  * | `/rbac/roles` | GET | Get user roles |
  *
  * Admin management endpoints:
  *
  * | Endpoint | Method | Description |
  * |----------|--------|-------------|
- * | `/rbac/admin/apps` | POST/GET | Manage apps |
  * | `/rbac/admin/roles` | POST/GET | Manage roles |
  * | `/rbac/admin/permissions` | POST/GET | Manage permissions |
  * | `/rbac/admin/users/:userId/roles` | POST/GET/DELETE | Manage user roles |
@@ -115,7 +114,6 @@
 export type {
   Role,
   Permission,
-  App,
   RolePermission,
   UserRole,
   RBACClaims,
@@ -129,7 +127,6 @@ export { DEFAULT_RBAC_CONFIG } from "../contracts/types.js"
 
 // Internal types
 export type {
-  CreateAppParams,
   CreateRoleParams,
   CreatePermissionParams,
   AssignRoleParams,

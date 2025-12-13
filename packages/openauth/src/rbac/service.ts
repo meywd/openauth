@@ -12,7 +12,6 @@ import { Storage } from "../storage/storage.js"
 import type {
   Role,
   Permission,
-  App,
   RolePermission,
   UserRole,
   RBACClaims,
@@ -70,9 +69,9 @@ export class RBACServiceImpl implements RBACService {
   private getCacheKey(
     tenantId: string,
     userId: string,
-    appId: string,
+    clientId: string,
   ): string[] {
-    return ["rbac", "permissions", tenantId, userId, appId]
+    return ["rbac", "permissions", tenantId, userId, clientId]
   }
 
   /**
@@ -80,10 +79,10 @@ export class RBACServiceImpl implements RBACService {
    */
   private async getPermissionsWithCache(
     userId: string,
-    appId: string,
+    clientId: string,
     tenantId: string,
   ): Promise<string[]> {
-    const cacheKey = this.getCacheKey(tenantId, userId, appId)
+    const cacheKey = this.getCacheKey(tenantId, userId, clientId)
 
     // Try to get from cache
     const cached = await Storage.get<CachedPermissions>(this.storage, cacheKey)
@@ -95,9 +94,9 @@ export class RBACServiceImpl implements RBACService {
     }
 
     // Fetch from database
-    const permissions = await this.adapter.getUserPermissionsForApp(
+    const permissions = await this.adapter.getUserPermissionsForClient(
       userId,
-      appId,
+      clientId,
       tenantId,
     )
     const permissionNames = permissions.map((p) => p.name)
@@ -164,13 +163,13 @@ export class RBACServiceImpl implements RBACService {
    */
   async checkPermission(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
     permission: string
   }): Promise<boolean> {
     const permissions = await this.getPermissionsWithCache(
       params.userId,
-      params.appId,
+      params.clientId,
       params.tenantId,
     )
     return permissions.includes(params.permission)
@@ -186,13 +185,13 @@ export class RBACServiceImpl implements RBACService {
    */
   async checkPermissions(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
     permissions: string[]
   }): Promise<Record<string, boolean>> {
     const userPermissions = await this.getPermissionsWithCache(
       params.userId,
-      params.appId,
+      params.clientId,
       params.tenantId,
     )
 
@@ -216,12 +215,12 @@ export class RBACServiceImpl implements RBACService {
    */
   async getUserPermissions(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
   }): Promise<string[]> {
     return this.getPermissionsWithCache(
       params.userId,
-      params.appId,
+      params.clientId,
       params.tenantId,
     )
   }
@@ -254,14 +253,14 @@ export class RBACServiceImpl implements RBACService {
    */
   async enrichTokenClaims(params: {
     userId: string
-    appId: string
+    clientId: string
     tenantId: string
   }): Promise<RBACClaims> {
     const [roles, permissions] = await Promise.all([
       this.adapter.getUserRoles(params.userId, params.tenantId),
       this.getPermissionsWithCache(
         params.userId,
-        params.appId,
+        params.clientId,
         params.tenantId,
       ),
     ])
@@ -284,40 +283,6 @@ export class RBACServiceImpl implements RBACService {
       roles: roleNames,
       permissions: limitedPermissions,
     }
-  }
-
-  // ==========================================
-  // Admin Operations - Apps
-  // ==========================================
-
-  /**
-   * Create a new app
-   *
-   * @param params - App creation parameters
-   * @returns The created app
-   */
-  async createApp(params: {
-    id: string
-    name: string
-    tenantId: string
-    description?: string
-  }): Promise<App> {
-    return this.adapter.createApp({
-      id: params.id,
-      name: params.name,
-      tenant_id: params.tenantId,
-      description: params.description,
-    })
-  }
-
-  /**
-   * List all apps for a tenant
-   *
-   * @param tenantId - The tenant ID
-   * @returns Array of apps
-   */
-  async listApps(tenantId: string): Promise<App[]> {
-    return this.adapter.listApps(tenantId)
   }
 
   // ==========================================
@@ -366,14 +331,14 @@ export class RBACServiceImpl implements RBACService {
    */
   async createPermission(params: {
     name: string
-    appId: string
+    clientId: string
     resource: string
     action: string
     description?: string
   }): Promise<Permission> {
     return this.adapter.createPermission({
       name: params.name,
-      app_id: params.appId,
+      client_id: params.clientId,
       resource: params.resource,
       action: params.action,
       description: params.description,
@@ -383,11 +348,11 @@ export class RBACServiceImpl implements RBACService {
   /**
    * List all permissions for an app
    *
-   * @param appId - The app ID
+   * @param clientId - The app ID
    * @returns Array of permissions
    */
-  async listPermissions(appId: string): Promise<Permission[]> {
-    return this.adapter.listPermissions(appId)
+  async listPermissions(clientId: string): Promise<Permission[]> {
+    return this.adapter.listPermissions(clientId)
   }
 
   /**

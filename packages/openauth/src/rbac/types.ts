@@ -8,7 +8,6 @@
 export {
   Role,
   Permission,
-  App,
   RolePermission,
   UserRole,
   RBACClaims,
@@ -22,16 +21,6 @@ export {
 /**
  * Internal types for RBAC adapter operations
  */
-
-/**
- * Parameters for creating an app
- */
-export interface CreateAppParams {
-  id: string
-  name: string
-  tenant_id: string
-  description?: string
-}
 
 /**
  * Parameters for creating a role
@@ -48,7 +37,7 @@ export interface CreateRoleParams {
  */
 export interface CreatePermissionParams {
   name: string
-  app_id: string
+  client_id: string
   resource: string
   action: string
   description?: string

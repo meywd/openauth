@@ -14,7 +14,7 @@ import { DEFAULT_RBAC_CONFIG } from "../contracts/types.js"
  */
 export interface TokenEnrichmentParams {
   userId: string
-  appId: string
+  clientId: string
   tenantId: string
 }
 
@@ -44,7 +44,7 @@ export interface TokenEnrichmentOptions {
  * ```typescript
  * const claims = await enrichTokenWithRBAC(rbacService, {
  *   userId: 'user-123',
- *   appId: 'my-app',
+ *   clientId: 'my-app',
  *   tenantId: 'tenant-1'
  * });
  *
@@ -66,7 +66,7 @@ export async function enrichTokenWithRBAC(
   // Get claims from service
   const claims = await service.enrichTokenClaims({
     userId: params.userId,
-    appId: params.appId,
+    clientId: params.clientId,
     tenantId: params.tenantId,
   })
 
@@ -104,7 +104,7 @@ export async function enrichTokenWithRBAC(
  * // Later...
  * const claims = await enrichToken({
  *   userId: 'user-123',
- *   appId: 'my-app',
+ *   clientId: 'my-app',
  *   tenantId: 'tenant-1'
  * });
  * ```

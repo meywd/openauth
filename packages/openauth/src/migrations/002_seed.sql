@@ -82,89 +82,48 @@ INSERT OR IGNORE INTO oauth_clients (
 );
 
 -- ============================================================================
--- SECTION 2: RBAC APPLICATIONS
+-- SECTION 2: RBAC PERMISSIONS
 -- ============================================================================
+-- Permissions are now scoped directly to OAuth clients
 
--- Core Platform App (system-level permissions)
-INSERT OR IGNORE INTO rbac_apps (id, name, tenant_id, description, created_at)
-VALUES (
-    'app_platform',
-    'Platform',
-    'default',
-    'Core platform permissions for system administration',
-    strftime('%s', 'now') * 1000
-);
+-- Admin Dashboard Permissions (full admin access)
+INSERT OR IGNORE INTO rbac_permissions (id, name, client_id, description, resource, action, created_at)
+VALUES
+    ('perm_admin_platform', 'platform:admin', 'client_admin_dashboard', 'Full platform administration', 'platform', 'admin', strftime('%s', 'now') * 1000),
+    ('perm_admin_settings_read', 'settings:read', 'client_admin_dashboard', 'View platform settings', 'settings', 'read', strftime('%s', 'now') * 1000),
+    ('perm_admin_settings_write', 'settings:write', 'client_admin_dashboard', 'Modify platform settings', 'settings', 'write', strftime('%s', 'now') * 1000),
+    ('perm_admin_audit_read', 'audit:read', 'client_admin_dashboard', 'View audit logs', 'audit', 'read', strftime('%s', 'now') * 1000),
+    ('perm_admin_users_read', 'users:read', 'client_admin_dashboard', 'View user profiles', 'users', 'read', strftime('%s', 'now') * 1000),
+    ('perm_admin_users_write', 'users:write', 'client_admin_dashboard', 'Create and update users', 'users', 'write', strftime('%s', 'now') * 1000),
+    ('perm_admin_users_delete', 'users:delete', 'client_admin_dashboard', 'Delete users', 'users', 'delete', strftime('%s', 'now') * 1000),
+    ('perm_admin_roles_assign', 'roles:assign', 'client_admin_dashboard', 'Assign roles to users', 'roles', 'assign', strftime('%s', 'now') * 1000),
+    ('perm_admin_roles_revoke', 'roles:revoke', 'client_admin_dashboard', 'Revoke roles from users', 'roles', 'revoke', strftime('%s', 'now') * 1000),
+    ('perm_admin_clients_read', 'clients:read', 'client_admin_dashboard', 'View OAuth clients', 'clients', 'read', strftime('%s', 'now') * 1000),
+    ('perm_admin_clients_write', 'clients:write', 'client_admin_dashboard', 'Create and update OAuth clients', 'clients', 'write', strftime('%s', 'now') * 1000),
+    ('perm_admin_clients_delete', 'clients:delete', 'client_admin_dashboard', 'Delete OAuth clients', 'clients', 'delete', strftime('%s', 'now') * 1000),
+    ('perm_admin_secrets_rotate', 'secrets:rotate', 'client_admin_dashboard', 'Rotate client secrets', 'secrets', 'rotate', strftime('%s', 'now') * 1000);
 
--- User Management App
-INSERT OR IGNORE INTO rbac_apps (id, name, tenant_id, description, created_at)
-VALUES (
-    'app_users',
-    'User Management',
-    'default',
-    'User and identity management permissions',
-    strftime('%s', 'now') * 1000
-);
+-- API Service Permissions (M2M backend access)
+INSERT OR IGNORE INTO rbac_permissions (id, name, client_id, description, resource, action, created_at)
+VALUES
+    ('perm_api_read', 'api:read', 'client_api_service', 'Read API resources', 'api', 'read', strftime('%s', 'now') * 1000),
+    ('perm_api_write', 'api:write', 'client_api_service', 'Write API resources', 'api', 'write', strftime('%s', 'now') * 1000),
+    ('perm_api_users_read', 'users:read', 'client_api_service', 'View user profiles', 'users', 'read', strftime('%s', 'now') * 1000);
 
--- Client Management App
-INSERT OR IGNORE INTO rbac_apps (id, name, tenant_id, description, created_at)
-VALUES (
-    'app_clients',
-    'Client Management',
-    'default',
-    'OAuth client management permissions',
-    strftime('%s', 'now') * 1000
-);
+-- Web App Permissions (standard user access)
+INSERT OR IGNORE INTO rbac_permissions (id, name, client_id, description, resource, action, created_at)
+VALUES
+    ('perm_web_profile_read', 'profile:read', 'client_web_app', 'Read own profile', 'profile', 'read', strftime('%s', 'now') * 1000),
+    ('perm_web_profile_write', 'profile:write', 'client_web_app', 'Update own profile', 'profile', 'write', strftime('%s', 'now') * 1000);
 
--- API Access App
-INSERT OR IGNORE INTO rbac_apps (id, name, tenant_id, description, created_at)
-VALUES (
-    'app_api',
-    'API Access',
-    'default',
-    'API access and integration permissions',
-    strftime('%s', 'now') * 1000
-);
+-- Mobile App Permissions (standard user access)
+INSERT OR IGNORE INTO rbac_permissions (id, name, client_id, description, resource, action, created_at)
+VALUES
+    ('perm_mobile_profile_read', 'profile:read', 'client_mobile_app', 'Read own profile', 'profile', 'read', strftime('%s', 'now') * 1000),
+    ('perm_mobile_profile_write', 'profile:write', 'client_mobile_app', 'Update own profile', 'profile', 'write', strftime('%s', 'now') * 1000);
 
 -- ============================================================================
--- SECTION 3: RBAC PERMISSIONS
--- ============================================================================
-
--- Platform Permissions
-INSERT OR IGNORE INTO rbac_permissions (id, name, app_id, description, resource, action, created_at)
-VALUES
-    ('perm_platform_admin', 'platform:admin', 'app_platform', 'Full platform administration', 'platform', 'admin', strftime('%s', 'now') * 1000),
-    ('perm_platform_settings_read', 'platform:settings:read', 'app_platform', 'View platform settings', 'settings', 'read', strftime('%s', 'now') * 1000),
-    ('perm_platform_settings_write', 'platform:settings:write', 'app_platform', 'Modify platform settings', 'settings', 'write', strftime('%s', 'now') * 1000),
-    ('perm_platform_audit_read', 'platform:audit:read', 'app_platform', 'View audit logs', 'audit', 'read', strftime('%s', 'now') * 1000);
-
--- User Management Permissions
-INSERT OR IGNORE INTO rbac_permissions (id, name, app_id, description, resource, action, created_at)
-VALUES
-    ('perm_users_read', 'users:read', 'app_users', 'View user profiles', 'users', 'read', strftime('%s', 'now') * 1000),
-    ('perm_users_write', 'users:write', 'app_users', 'Create and update users', 'users', 'write', strftime('%s', 'now') * 1000),
-    ('perm_users_delete', 'users:delete', 'app_users', 'Delete users', 'users', 'delete', strftime('%s', 'now') * 1000),
-    ('perm_users_roles_assign', 'users:roles:assign', 'app_users', 'Assign roles to users', 'roles', 'assign', strftime('%s', 'now') * 1000),
-    ('perm_users_roles_revoke', 'users:roles:revoke', 'app_users', 'Revoke roles from users', 'roles', 'revoke', strftime('%s', 'now') * 1000),
-    ('perm_users_impersonate', 'users:impersonate', 'app_users', 'Impersonate other users', 'users', 'impersonate', strftime('%s', 'now') * 1000);
-
--- Client Management Permissions
-INSERT OR IGNORE INTO rbac_permissions (id, name, app_id, description, resource, action, created_at)
-VALUES
-    ('perm_clients_read', 'clients:read', 'app_clients', 'View OAuth clients', 'clients', 'read', strftime('%s', 'now') * 1000),
-    ('perm_clients_write', 'clients:write', 'app_clients', 'Create and update OAuth clients', 'clients', 'write', strftime('%s', 'now') * 1000),
-    ('perm_clients_delete', 'clients:delete', 'app_clients', 'Delete OAuth clients', 'clients', 'delete', strftime('%s', 'now') * 1000),
-    ('perm_clients_secrets_rotate', 'clients:secrets:rotate', 'app_clients', 'Rotate client secrets', 'secrets', 'rotate', strftime('%s', 'now') * 1000),
-    ('perm_clients_tokens_revoke', 'clients:tokens:revoke', 'app_clients', 'Revoke client tokens', 'tokens', 'revoke', strftime('%s', 'now') * 1000);
-
--- API Access Permissions
-INSERT OR IGNORE INTO rbac_permissions (id, name, app_id, description, resource, action, created_at)
-VALUES
-    ('perm_api_read', 'api:read', 'app_api', 'Read API resources', 'api', 'read', strftime('%s', 'now') * 1000),
-    ('perm_api_write', 'api:write', 'app_api', 'Write API resources', 'api', 'write', strftime('%s', 'now') * 1000),
-    ('perm_api_admin', 'api:admin', 'app_api', 'Full API administration', 'api', 'admin', strftime('%s', 'now') * 1000);
-
--- ============================================================================
--- SECTION 4: RBAC ROLES
+-- SECTION 3: RBAC ROLES
 -- ============================================================================
 
 -- Super Admin Role (all permissions)
@@ -264,76 +223,76 @@ VALUES (
 );
 
 -- ============================================================================
--- SECTION 5: ROLE-PERMISSION MAPPINGS
+-- SECTION 4: ROLE-PERMISSION MAPPINGS
 -- ============================================================================
 
--- Super Admin: All permissions
+-- Super Admin: All permissions for admin dashboard client
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 SELECT 'role_super_admin', id, strftime('%s', 'now') * 1000, 'system'
-FROM rbac_permissions;
+FROM rbac_permissions WHERE client_id = 'client_admin_dashboard';
 
--- Admin: User and client management
+-- Admin: User and client management (admin dashboard permissions)
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 VALUES
-    ('role_admin', 'perm_users_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_users_write', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_users_delete', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_users_roles_assign', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_users_roles_revoke', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_clients_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_clients_write', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_clients_delete', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_clients_secrets_rotate', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_platform_settings_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_admin', 'perm_platform_audit_read', strftime('%s', 'now') * 1000, 'system');
+    ('role_admin', 'perm_admin_users_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_users_write', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_users_delete', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_roles_assign', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_roles_revoke', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_clients_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_clients_write', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_clients_delete', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_secrets_rotate', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_settings_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_admin', 'perm_admin_audit_read', strftime('%s', 'now') * 1000, 'system');
 
 -- User Manager: User management only
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 VALUES
-    ('role_user_manager', 'perm_users_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_user_manager', 'perm_users_write', strftime('%s', 'now') * 1000, 'system'),
-    ('role_user_manager', 'perm_users_delete', strftime('%s', 'now') * 1000, 'system'),
-    ('role_user_manager', 'perm_users_roles_assign', strftime('%s', 'now') * 1000, 'system'),
-    ('role_user_manager', 'perm_users_roles_revoke', strftime('%s', 'now') * 1000, 'system');
+    ('role_user_manager', 'perm_admin_users_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_user_manager', 'perm_admin_users_write', strftime('%s', 'now') * 1000, 'system'),
+    ('role_user_manager', 'perm_admin_users_delete', strftime('%s', 'now') * 1000, 'system'),
+    ('role_user_manager', 'perm_admin_roles_assign', strftime('%s', 'now') * 1000, 'system'),
+    ('role_user_manager', 'perm_admin_roles_revoke', strftime('%s', 'now') * 1000, 'system');
 
 -- Client Manager: Client management only
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 VALUES
-    ('role_client_manager', 'perm_clients_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_client_manager', 'perm_clients_write', strftime('%s', 'now') * 1000, 'system'),
-    ('role_client_manager', 'perm_clients_delete', strftime('%s', 'now') * 1000, 'system'),
-    ('role_client_manager', 'perm_clients_secrets_rotate', strftime('%s', 'now') * 1000, 'system'),
-    ('role_client_manager', 'perm_clients_tokens_revoke', strftime('%s', 'now') * 1000, 'system');
+    ('role_client_manager', 'perm_admin_clients_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_client_manager', 'perm_admin_clients_write', strftime('%s', 'now') * 1000, 'system'),
+    ('role_client_manager', 'perm_admin_clients_delete', strftime('%s', 'now') * 1000, 'system'),
+    ('role_client_manager', 'perm_admin_secrets_rotate', strftime('%s', 'now') * 1000, 'system');
 
 -- Auditor: Read-only audit access
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 VALUES
-    ('role_auditor', 'perm_platform_audit_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_auditor', 'perm_platform_settings_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_auditor', 'perm_users_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_auditor', 'perm_clients_read', strftime('%s', 'now') * 1000, 'system');
+    ('role_auditor', 'perm_admin_audit_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_auditor', 'perm_admin_settings_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_auditor', 'perm_admin_users_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_auditor', 'perm_admin_clients_read', strftime('%s', 'now') * 1000, 'system');
 
--- API User: Basic API access
+-- API User: Basic API access (for API service client)
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 VALUES
     ('role_api_user', 'perm_api_read', strftime('%s', 'now') * 1000, 'system'),
     ('role_api_user', 'perm_api_write', strftime('%s', 'now') * 1000, 'system');
 
--- Member: Basic read access
+-- Member: Basic profile access (for web/mobile apps)
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 VALUES
-    ('role_member', 'perm_users_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_member', 'perm_api_read', strftime('%s', 'now') * 1000, 'system');
+    ('role_member', 'perm_web_profile_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_member', 'perm_web_profile_write', strftime('%s', 'now') * 1000, 'system'),
+    ('role_member', 'perm_mobile_profile_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_member', 'perm_mobile_profile_write', strftime('%s', 'now') * 1000, 'system');
 
--- Viewer: Read-only
+-- Viewer: Read-only profile access
 INSERT OR IGNORE INTO rbac_role_permissions (role_id, permission_id, granted_at, granted_by)
 VALUES
-    ('role_viewer', 'perm_users_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_viewer', 'perm_clients_read', strftime('%s', 'now') * 1000, 'system'),
-    ('role_viewer', 'perm_api_read', strftime('%s', 'now') * 1000, 'system');
+    ('role_viewer', 'perm_web_profile_read', strftime('%s', 'now') * 1000, 'system'),
+    ('role_viewer', 'perm_mobile_profile_read', strftime('%s', 'now') * 1000, 'system');
 
 -- ============================================================================
--- SECTION 6: DEFAULT USERS (for development/testing)
+-- SECTION 5: DEFAULT USERS (for development/testing)
 -- ============================================================================
 -- Note: In production, users should be created through the authentication flow.
 -- These are placeholder entries for development environments.
@@ -352,7 +311,6 @@ VALUES (
 -- VERIFICATION QUERIES (for testing - comment out in production)
 -- ============================================================================
 -- SELECT 'Clients:' AS entity, COUNT(*) AS count FROM oauth_clients
--- UNION ALL SELECT 'Apps:', COUNT(*) FROM rbac_apps
 -- UNION ALL SELECT 'Permissions:', COUNT(*) FROM rbac_permissions
 -- UNION ALL SELECT 'Roles:', COUNT(*) FROM rbac_roles
 -- UNION ALL SELECT 'Role-Permissions:', COUNT(*) FROM rbac_role_permissions;

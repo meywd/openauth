@@ -12,13 +12,13 @@ import type { RBACService } from "../contracts/types.js"
 
 /**
  * Context type for RBAC endpoints
- * Expects userId, tenantId, and optionally appId from middleware
+ * Expects userId, tenantId, and optionally clientId from middleware
  */
 export interface RBACContext {
   Variables: {
     userId: string
     tenantId: string
-    appId?: string
+    clientId?: string
   }
 }
 
@@ -73,7 +73,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
   router.post("/check", async (c) => {
     const userId = c.get("userId")
     const tenantId = c.get("tenantId")
-    const defaultAppId = c.get("appId")
+    const defaultAppId = c.get("clientId")
 
     if (!userId || !tenantId) {
       return c.json(
@@ -99,13 +99,13 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
       )
     }
 
-    // Get appId from query or context
-    const appId = c.req.query("appId") || defaultAppId
-    if (!appId) {
+    // Get clientId from query or context
+    const clientId = c.req.query("clientId") || defaultAppId
+    if (!clientId) {
       return c.json(
         {
           error: "Bad Request",
-          message: "appId is required (via query parameter or token audience)",
+          message: "clientId is required (via query parameter or token audience)",
         },
         400,
       )
@@ -113,7 +113,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
 
     const allowed = await service.checkPermission({
       userId,
-      appId,
+      clientId,
       tenantId,
       permission: body.permission,
     })
@@ -139,7 +139,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
   router.post("/check/batch", async (c) => {
     const userId = c.get("userId")
     const tenantId = c.get("tenantId")
-    const defaultAppId = c.get("appId")
+    const defaultAppId = c.get("clientId")
 
     if (!userId || !tenantId) {
       return c.json(
@@ -189,13 +189,13 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
       )
     }
 
-    // Get appId from query or context
-    const appId = c.req.query("appId") || defaultAppId
-    if (!appId) {
+    // Get clientId from query or context
+    const clientId = c.req.query("clientId") || defaultAppId
+    if (!clientId) {
       return c.json(
         {
           error: "Bad Request",
-          message: "appId is required (via query parameter or token audience)",
+          message: "clientId is required (via query parameter or token audience)",
         },
         400,
       )
@@ -203,7 +203,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
 
     const results = await service.checkPermissions({
       userId,
-      appId,
+      clientId,
       tenantId,
       permissions: body.permissions,
     })
@@ -215,7 +215,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
    * GET /permissions - Get all permissions for user in an app
    *
    * Query parameters:
-   *   appId - Optional, defaults to token audience
+   *   clientId - Optional, defaults to token audience
    *
    * Response:
    *   { "permissions": ["posts:read", "posts:write", "users:read"] }
@@ -223,7 +223,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
   router.get("/permissions", async (c) => {
     const userId = c.get("userId")
     const tenantId = c.get("tenantId")
-    const defaultAppId = c.get("appId")
+    const defaultAppId = c.get("clientId")
 
     if (!userId || !tenantId) {
       return c.json(
@@ -232,13 +232,13 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
       )
     }
 
-    // Get appId from query or context
-    const appId = c.req.query("appId") || defaultAppId
-    if (!appId) {
+    // Get clientId from query or context
+    const clientId = c.req.query("clientId") || defaultAppId
+    if (!clientId) {
       return c.json(
         {
           error: "Bad Request",
-          message: "appId is required (via query parameter or token audience)",
+          message: "clientId is required (via query parameter or token audience)",
         },
         400,
       )
@@ -246,7 +246,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
 
     const permissions = await service.getUserPermissions({
       userId,
-      appId,
+      clientId,
       tenantId,
     })
 
@@ -295,7 +295,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
  *
  * This is a reference implementation - you should adapt to your auth system.
  *
- * @param extractContext - Function to extract userId, tenantId, appId from request
+ * @param extractContext - Function to extract userId, tenantId, clientId from request
  * @returns Middleware that sets RBAC context
  *
  * @example
@@ -306,7 +306,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
  *   return {
  *     userId: decoded.sub,
  *     tenantId: decoded.tid,
- *     appId: decoded.aud
+ *     clientId: decoded.aud
  *   };
  * };
  *
@@ -316,7 +316,7 @@ export function rbacEndpoints(service: RBACService): Hono<RBACContext> {
 export function createRBACContextMiddleware(
   extractContext: (
     req: Request,
-  ) => Promise<{ userId: string; tenantId: string; appId?: string } | null>,
+  ) => Promise<{ userId: string; tenantId: string; clientId?: string } | null>,
 ) {
   return async (
     c: {
@@ -337,8 +337,8 @@ export function createRBACContextMiddleware(
 
     c.set("userId", context.userId)
     c.set("tenantId", context.tenantId)
-    if (context.appId) {
-      c.set("appId", context.appId)
+    if (context.clientId) {
+      c.set("clientId", context.clientId)
     }
 
     await next()

@@ -527,11 +527,6 @@ export type {
    */
   Permission,
   /**
-   * App type for RBAC.
-   * @see import type { App } from "@openauthjs/openauth/rbac"
-   */
-  App,
-  /**
    * RBAC claims for tokens.
    * @see import type { RBACClaims } from "@openauthjs/openauth/rbac"
    */
