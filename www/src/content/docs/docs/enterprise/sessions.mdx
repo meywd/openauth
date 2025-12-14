@@ -169,3 +169,126 @@ session.switchAccount(1)
 // Get cookie header for response
 const cookieHeader = await sessionService.toCookie(session)
 ```
+
+## Session Analytics
+
+The admin session service provides device tracking and session analytics.
+
+### Session Info
+
+Each session includes device metadata:
+
+```ts
+interface UserSessionInfo {
+  id: string
+  browser_session_id: string
+  user_id: string
+  is_active: boolean
+  authenticated_at: number
+  expires_at: number
+  // Device info
+  user_agent: string      // Browser/device identification
+  ip_address: string      // Client IP address
+  last_activity: number   // Last activity timestamp (ms)
+}
+```
+
+### List User Sessions
+
+View all active sessions for a user across devices:
+
+```ts
+import { AdminSessionService } from "@openauthjs/openauth/session"
+
+const adminService = new AdminSessionService({ database: env.DB })
+
+const sessions = await adminService.listUserSessions({
+  userId: "user-123",
+  tenantId: "tenant-1",
+  limit: 50,
+  offset: 0,
+})
+
+// Returns sessions with device info
+sessions.forEach(session => {
+  console.log(`Device: ${session.user_agent}`)
+  console.log(`IP: ${session.ip_address}`)
+  console.log(`Last active: ${new Date(session.last_activity)}`)
+})
+```
+
+### Session Statistics
+
+Get aggregate session metrics:
+
+```ts
+const stats = await adminService.getSessionStats({
+  tenantId: "tenant-1", // Omit for global stats
+})
+
+// {
+//   totalBrowserSessions: 1250,
+//   totalAccountSessions: 3420,
+//   activeSessions: 890,
+//   activeSessionsLast24h: 450,
+//   uniqueUsers: 780
+// }
+```
+
+### Revoke Sessions
+
+Terminate specific or all user sessions:
+
+```ts
+// Revoke specific session (logs out one device)
+await adminService.revokeSession({
+  sessionId: "session-abc",
+  tenantId: "tenant-1",
+})
+
+// Revoke all sessions (force logout everywhere)
+await adminService.revokeAllUserSessions({
+  userId: "user-123",
+  tenantId: "tenant-1",
+})
+```
+
+### Admin API Endpoints
+
+```
+GET    /admin/users/:userId/sessions             - List user's sessions with device info
+DELETE /admin/users/:userId/sessions/:sessionId  - Terminate specific session
+DELETE /admin/users/:userId/sessions             - Terminate all user sessions
+POST   /admin/users/:userId/force-logout         - Force logout everywhere
+```
+
+### Cleanup Expired Sessions
+
+Scheduled maintenance to remove old sessions:
+
+```ts
+// Get expired sessions for review
+const expired = await adminService.getExpiredSessions({
+  maxAgeMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+  limit: 100,
+})
+
+// Cleanup expired sessions in batches
+const result = await adminService.cleanupExpiredSessions({
+  maxAgeMs: 7 * 24 * 60 * 60 * 1000,
+  batchSize: 100,
+})
+console.log(`Deleted ${result.deletedCount} expired sessions`)
+```
+
+:::tip[Scheduled Cleanup]
+Run `cleanupExpiredSessions` as a cron job or Cloudflare scheduled worker to prevent database bloat:
+```ts
+export default {
+  async scheduled(event, env, ctx) {
+    const adminService = new AdminSessionService({ database: env.DB })
+    await adminService.cleanupExpiredSessions({ maxAgeMs: 7 * 24 * 60 * 60 * 1000 })
+  }
+}
+```
+:::
