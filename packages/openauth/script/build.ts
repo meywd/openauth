@@ -2,6 +2,18 @@ import { Glob, $ } from "bun"
 import pkg from "../package.json"
 
 await $`rm -rf dist`
+
+// Build CLI
+await Bun.build({
+  format: "esm",
+  outdir: "bin",
+  target: "node",
+  entrypoints: ["./bin/cli.ts"],
+})
+
+// Format CLI output to match project standards (no semicolons)
+await $`npx prettier --write bin/cli.js`
+
 const files = new Glob("./src/**/*.{ts,tsx}").scan()
 for await (const file of files) {
   await Bun.build({
