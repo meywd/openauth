@@ -1631,7 +1631,11 @@ describe("RBACServiceImpl", () => {
 
       // Assigner does NOT have the system role
       const getUserRolesSpy = spyOn(adapter, "getUserRoles").mockResolvedValue([
-        createTestRole({ id: "other-role", name: "editor", is_system_role: false }),
+        createTestRole({
+          id: "other-role",
+          name: "editor",
+          is_system_role: false,
+        }),
       ])
 
       await expect(
@@ -1655,7 +1659,11 @@ describe("RBACServiceImpl", () => {
 
       // Assigner HAS the system role
       const getUserRolesSpy = spyOn(adapter, "getUserRoles").mockResolvedValue([
-        createTestRole({ id: "system-admin", name: "system-admin", is_system_role: true }),
+        createTestRole({
+          id: "system-admin",
+          name: "system-admin",
+          is_system_role: true,
+        }),
       ])
 
       // Mock the adapter's assignRoleToUser
@@ -1686,7 +1694,9 @@ describe("RBACServiceImpl", () => {
         name: "editor",
         is_system_role: false,
       })
-      const getRoleSpy = spyOn(adapter, "getRole").mockResolvedValue(regularRole)
+      const getRoleSpy = spyOn(adapter, "getRole").mockResolvedValue(
+        regularRole,
+      )
 
       // Mock the adapter's assignRoleToUser
       const assignSpy = spyOn(adapter, "assignRoleToUser").mockResolvedValue({

@@ -411,9 +411,7 @@ export class RBACServiceImpl implements RBACService {
         params.assignedBy,
         params.tenantId,
       )
-      const assignerHasRole = assignerRoles.some(
-        (r) => r.id === params.roleId,
-      )
+      const assignerHasRole = assignerRoles.some((r) => r.id === params.roleId)
 
       if (!assignerHasRole) {
         throw new RBACError(
