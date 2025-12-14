@@ -408,7 +408,7 @@ describe("D1UserAdapter", () => {
           updated_at: 1234567890,
           last_login_at: null,
           deleted_at: null,
-        password_reset_required: false,
+          password_reset_required: false,
         },
         {
           id: "usr_2",
@@ -421,7 +421,7 @@ describe("D1UserAdapter", () => {
           updated_at: 1234567891,
           last_login_at: null,
           deleted_at: null,
-        password_reset_required: false,
+          password_reset_required: false,
         },
       ]
 
