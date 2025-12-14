@@ -461,7 +461,9 @@ function migrate(args: string[]) {
     console.log("Force mode: running all migrations")
     pendingMigrations = schemaMigrations
   } else {
-    pendingMigrations = schemaMigrations.filter((m) => !appliedNames.has(m.name))
+    pendingMigrations = schemaMigrations.filter(
+      (m) => !appliedNames.has(m.name),
+    )
   }
 
   if (pendingMigrations.length === 0 && !parsed.withSeed) {
@@ -475,7 +477,10 @@ function migrate(args: string[]) {
     const existingMigration = applied.find((a) => a.name === migration.name)
 
     // Check for checksum mismatch (modified migration)
-    if (existingMigration && existingMigration.checksum !== migration.checksum) {
+    if (
+      existingMigration &&
+      existingMigration.checksum !== migration.checksum
+    ) {
       console.log(
         `\nWarning: ${migration.name} has been modified since it was applied.`,
       )
@@ -499,7 +504,11 @@ function migrate(args: string[]) {
     }
 
     // Record the migration (after first migration creates the table)
-    if (migration.name === "001_schema.sql" || tableExists || appliedCount > 0) {
+    if (
+      migration.name === "001_schema.sql" ||
+      tableExists ||
+      appliedCount > 0
+    ) {
       const recordResult = recordMigration(dbName, migration, options)
       if (!recordResult.success) {
         console.warn(`Warning: Could not record migration ${migration.name}`)
