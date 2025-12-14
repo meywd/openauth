@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.7] - 2024-12-13
 
+### Added
+
+- **Enterprise Admin APIs** (Phases 1-6) - comprehensive admin management endpoints
+- **Force password reset** functionality for user accounts
+- **M2M token verification** - `verifyM2MToken` function for machine-to-machine auth
+- **Circuit breaker and retry logic** in ClientD1Adapter for resilience
+- **Migration tracking** - proper tracking in CLI to prevent duplicate migrations
+- **CLI enhancements**:
+  - `--remote` flag for explicit remote D1 database operations
+  - `--config` flag for custom wrangler configuration files
+- **RBAC seed data** - default clients, roles, and permissions
+- GitHub Release creation with auto-generated release notes on publish
+
 ### Changed
 
 - Merged RBAC apps into OAuth clients - removed separate `rbac_apps` table
@@ -25,11 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GET /clients/:clientId/permissions`
   - `DELETE /clients/:clientId/permissions/:permissionId`
 - Renamed `app_id` to `client_id` throughout RBAC system
+- Consolidated oauth_clients schema - fixed id/client_id mismatch
+- Consolidated all migrations into single schema file
 
-### Added
+### Fixed
 
-- GitHub Release creation with auto-generated release notes on publish
-- Release notes categorization by commit type (features, fixes, docs)
+- Merge roles instead of overwriting in enterprise issuer
+- Shell escaping issue in migration CLI
+- Migration state tracking to prevent duplicate column errors
+- CLI output formatting to match project standards
 
 ## [1.0.6] - 2024-12-13
 
