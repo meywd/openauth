@@ -80,7 +80,6 @@ describe("D1UserAdapter", () => {
         last_login_at: null,
         deleted_at: null,
         password_reset_required: false,
-        password_reset_required: false,
       }
 
       await adapter.createUser(user)
@@ -115,7 +114,6 @@ describe("D1UserAdapter", () => {
         updated_at: Date.now(),
         last_login_at: null,
         deleted_at: null,
-        password_reset_required: false,
         password_reset_required: false,
       }
 
@@ -258,7 +256,6 @@ describe("D1UserAdapter", () => {
 
     test("handles null metadata", async () => {
       const userRow = {
-        password_reset_required: 0,
         id: "usr_123",
         tenant_id: tenantId,
         email: "test@example.com",
@@ -269,7 +266,7 @@ describe("D1UserAdapter", () => {
         updated_at: 1234567890,
         last_login_at: null,
         deleted_at: null,
-        password_reset_required: false,
+        password_reset_required: 0,
       }
 
       mockDb.prepare = () =>
