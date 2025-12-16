@@ -264,7 +264,6 @@ function checkColumnExists(
   return result.success && result.output?.includes(columnName)
 }
 
-
 /**
  * Check if a table exists
  */
@@ -365,7 +364,6 @@ function isMigrationAlreadyApplied(
 
   return { applied: false }
 }
-
 
 /**
  * Get applied migrations from database

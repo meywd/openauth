@@ -26,23 +26,20 @@ export function parseSchemaChanges(sql: string): SchemaChange[] {
   const changes: SchemaChange[] = []
 
   // ALTER TABLE ... ADD COLUMN
-  const addColumnRegex =
-    /ALTER\s+TABLE\s+(\w+)\s+ADD\s+(?:COLUMN\s+)?(\w+)/gi
+  const addColumnRegex = /ALTER\s+TABLE\s+(\w+)\s+ADD\s+(?:COLUMN\s+)?(\w+)/gi
   let match
   while ((match = addColumnRegex.exec(sql)) !== null) {
     changes.push({ type: "add_column", table: match[1], column: match[2] })
   }
 
   // ALTER TABLE ... DROP COLUMN
-  const dropColumnRegex =
-    /ALTER\s+TABLE\s+(\w+)\s+DROP\s+(?:COLUMN\s+)?(\w+)/gi
+  const dropColumnRegex = /ALTER\s+TABLE\s+(\w+)\s+DROP\s+(?:COLUMN\s+)?(\w+)/gi
   while ((match = dropColumnRegex.exec(sql)) !== null) {
     changes.push({ type: "drop_column", table: match[1], column: match[2] })
   }
 
   // CREATE TABLE (without IF NOT EXISTS - those are always safe)
-  const createTableRegex =
-    /CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi
+  const createTableRegex = /CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS\s+)(\w+)/gi
   while ((match = createTableRegex.exec(sql)) !== null) {
     changes.push({ type: "create_table", table: match[1] })
   }

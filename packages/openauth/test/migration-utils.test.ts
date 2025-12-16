@@ -144,8 +144,7 @@ describe("parseSchemaChanges", () => {
     })
 
     test("ignores CREATE INDEX IF NOT EXISTS (already idempotent)", () => {
-      const sql =
-        "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)"
+      const sql = "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)"
       const changes = parseSchemaChanges(sql)
       expect(changes).toHaveLength(0)
     })
@@ -184,9 +183,9 @@ describe("parseSchemaChanges", () => {
       expect(changes.find((c) => c.type === "create_table")?.table).toBe(
         "audit_log",
       )
-      expect(
-        changes.find((c) => c.type === "add_column")?.column,
-      ).toBe("last_login")
+      expect(changes.find((c) => c.type === "add_column")?.column).toBe(
+        "last_login",
+      )
       expect(changes.find((c) => c.type === "create_index")?.index).toBe(
         "idx_users_login",
       )
@@ -237,9 +236,9 @@ describe("isAlreadyAppliedError", () => {
   })
 
   test("detects index already exists error", () => {
-    expect(
-      isAlreadyAppliedError("index idx_users_email already exists"),
-    ).toBe(true)
+    expect(isAlreadyAppliedError("index idx_users_email already exists")).toBe(
+      true,
+    )
   })
 
   test("returns false for other errors", () => {

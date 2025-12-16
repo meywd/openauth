@@ -1228,7 +1228,11 @@ function renderAccountPicker(
             ${
               account.avatarUrl
                 ? `<img src="${escapeHtml(account.avatarUrl)}" alt="">`
-                : escapeHtml((account.displayName || account.email || "?").charAt(0).toUpperCase())
+                : escapeHtml(
+                    (account.displayName || account.email || "?")
+                      .charAt(0)
+                      .toUpperCase(),
+                  )
             }
           </div>
           <div class="account-info">
