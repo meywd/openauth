@@ -244,7 +244,9 @@ function checkMigrationsTableExists(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='_openauth_migrations'",
     options,
   )
-  return result.success && (result.output?.includes("_openauth_migrations") ?? false)
+  return (
+    result.success && (result.output?.includes("_openauth_migrations") ?? false)
+  )
 }
 
 /**
