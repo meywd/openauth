@@ -831,8 +831,18 @@ export function createMultiTenantIssuer<
     const scope = formData.scope as string
     const nonce = formData.nonce as string
 
+    // Validate required OAuth parameters
     if (!userId) {
       return c.json({ error: "Missing user_id" }, 400)
+    }
+    if (!clientId || typeof clientId !== "string") {
+      return c.json({ error: "Missing or invalid client_id" }, 400)
+    }
+    if (!redirectUri || typeof redirectUri !== "string") {
+      return c.json({ error: "Missing or invalid redirect_uri" }, 400)
+    }
+    if (!responseType || typeof responseType !== "string") {
+      return c.json({ error: "Missing or invalid response_type" }, 400)
     }
 
     // Get browser session from cookie
@@ -1052,6 +1062,19 @@ async function defaultAllowCheck(
 }
 
 /**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(str: string | undefined | null): string {
+  if (!str) return ""
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+/**
  * Render account picker UI
  */
 function renderAccountPicker(
@@ -1200,29 +1223,27 @@ function renderAccountPicker(
       .map(
         (account) => `
       <div class="account-row">
-        <a href="/authorize?client_id=${encodeURIComponent(authorization.client_id)}&redirect_uri=${encodeURIComponent(authorization.redirect_uri)}&response_type=${encodeURIComponent(authorization.response_type)}&state=${encodeURIComponent(authorization.state || "")}&scope=${encodeURIComponent(authorization.scope || "")}&nonce=${encodeURIComponent(authorization.nonce || "")}&prompt=none&account_hint=${encodeURIComponent(account.userId)}" class="account-btn ${account.isActive ? "active" : ""}">
+        <a href="/authorize?client_id=${encodeURIComponent(authorization.client_id)}&redirect_uri=${encodeURIComponent(authorization.redirect_uri)}&response_type=${encodeURIComponent(authorization.response_type)}&state=${encodeURIComponent(authorization.state || "")}&scope=${encodeURIComponent(authorization.scope || "")}&nonce=${encodeURIComponent(authorization.nonce || "")}&prompt=none&account_hint=${encodeURIComponent(account.userId)}" class="account-btn ${Boolean(account.isActive) ? "active" : ""}">
           <div class="avatar">
             ${
               account.avatarUrl
-                ? `<img src="${account.avatarUrl}" alt="">`
-                : (account.displayName || account.email || "?")
-                    .charAt(0)
-                    .toUpperCase()
+                ? `<img src="${escapeHtml(account.avatarUrl)}" alt="">`
+                : escapeHtml((account.displayName || account.email || "?").charAt(0).toUpperCase())
             }
           </div>
           <div class="account-info">
-            <div class="account-name">${account.displayName || account.email || account.userId}</div>
-            ${account.email && account.displayName ? `<div class="account-email">${account.email}</div>` : ""}
+            <div class="account-name">${escapeHtml(account.displayName || account.email || account.userId)}</div>
+            ${account.email && account.displayName ? `<div class="account-email">${escapeHtml(account.email)}</div>` : ""}
           </div>
         </a>
         <form method="POST" action="/account-picker/remove" style="margin: 0;">
-          <input type="hidden" name="user_id" value="${account.userId}">
-          <input type="hidden" name="client_id" value="${authorization.client_id}">
-          <input type="hidden" name="redirect_uri" value="${authorization.redirect_uri}">
-          <input type="hidden" name="response_type" value="${authorization.response_type}">
-          <input type="hidden" name="state" value="${authorization.state || ""}">
-          <input type="hidden" name="scope" value="${authorization.scope || ""}">
-          <input type="hidden" name="nonce" value="${authorization.nonce || ""}">
+          <input type="hidden" name="user_id" value="${escapeHtml(account.userId)}">
+          <input type="hidden" name="client_id" value="${escapeHtml(authorization.client_id)}">
+          <input type="hidden" name="redirect_uri" value="${escapeHtml(authorization.redirect_uri)}">
+          <input type="hidden" name="response_type" value="${escapeHtml(authorization.response_type)}">
+          <input type="hidden" name="state" value="${escapeHtml(authorization.state || "")}">
+          <input type="hidden" name="scope" value="${escapeHtml(authorization.scope || "")}">
+          <input type="hidden" name="nonce" value="${escapeHtml(authorization.nonce || "")}">
           <button type="submit" class="signout-btn">Sign out</button>
         </form>
       </div>
