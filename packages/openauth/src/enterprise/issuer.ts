@@ -1231,10 +1231,26 @@ function renderAccountPicker(
     <h1>Choose Account</h1>
     <p class="subtitle">Select an account to continue</p>
     ${accounts
-      .map(
-        (account) => `
+      .map((account) => {
+        const accountUrl = new URL("/authorize", baseUrl)
+        accountUrl.searchParams.set("client_id", authorization.client_id)
+        accountUrl.searchParams.set("redirect_uri", authorization.redirect_uri)
+        accountUrl.searchParams.set(
+          "response_type",
+          authorization.response_type,
+        )
+        if (authorization.state)
+          accountUrl.searchParams.set("state", authorization.state)
+        if (authorization.scope)
+          accountUrl.searchParams.set("scope", authorization.scope)
+        if (authorization.nonce)
+          accountUrl.searchParams.set("nonce", authorization.nonce)
+        accountUrl.searchParams.set("prompt", "none")
+        accountUrl.searchParams.set("account_hint", account.userId)
+        const activeClass = Boolean(account.isActive) ? "active" : ""
+        return `
       <div class="account-row">
-        <a href="/authorize?client_id=${encodeURIComponent(authorization.client_id)}&redirect_uri=${encodeURIComponent(authorization.redirect_uri)}&response_type=${encodeURIComponent(authorization.response_type)}&state=${encodeURIComponent(authorization.state || "")}&scope=${encodeURIComponent(authorization.scope || "")}&nonce=${encodeURIComponent(authorization.nonce || "")}&prompt=none&account_hint=${encodeURIComponent(account.userId)}" class="account-btn ${Boolean(account.isActive) ? "active" : ""}">
+        <a href="${escapeHtml(accountUrl.toString())}" class="account-btn ${activeClass}">
           <div class="avatar">
             ${
               account.avatarUrl
@@ -1262,8 +1278,8 @@ function renderAccountPicker(
           <button type="submit" class="signout-btn">Sign out</button>
         </form>
       </div>
-    `,
-      )
+    `
+      })
       .join("")}
     <a href="${generateAddAccountUrl(baseUrl + "/authorize", authorization)}" class="add-account">
       + Use another account
