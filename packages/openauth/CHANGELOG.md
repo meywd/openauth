@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.10] - 2025-12-16
+
+### Added
+
+- add sign-out option to account picker UI
+
+### Fixed
+
+- address Copilot security review comments
+- resolve TypeScript boolean | undefined errors in CLI
+- address security review comments
+
+### Changed
+
+- improve URL construction readability in account picker
+
+### Documentation
+
+- add GitHub Copilot custom instructions
+
+
 ## [1.0.9] - 2025-12-14
 
 ### Documentation
@@ -393,7 +414,8 @@ The following is the changelog from the upstream OpenAuth project.
 
 - 515635f: rename package
 
-[Unreleased]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.9...HEAD
+[Unreleased]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.10...HEAD
+[1.0.10]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.9...v1.0.10
 [1.0.9]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.6...v1.0.7
