@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.13] - 2025-12-17
+
+### Fixed
+
+- align enterprise Theme with standard OpenAuth Theme
+
+
 ## [1.0.12] - 2025-12-17
 
 ### Added
@@ -421,7 +428,8 @@ The following is the changelog from the upstream OpenAuth project.
 
 - 515635f: rename package
 
-[Unreleased]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.12...HEAD
+[Unreleased]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.13...HEAD
+[1.0.13]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.12...v1.0.13
 [1.0.12]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.11...v1.0.12
 [1.0.11]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.10...v1.0.11
 [1.0.10]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.9...v1.0.10
