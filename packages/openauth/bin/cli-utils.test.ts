@@ -159,7 +159,13 @@ describe("buildWranglerArgs", () => {
       isRemote: false,
       configFile: "./wrangler.toml",
     })
-    expect(args).toEqual(["d1", "execute", "mydb", "--config", "./wrangler.toml"])
+    expect(args).toEqual([
+      "d1",
+      "execute",
+      "mydb",
+      "--config",
+      "./wrangler.toml",
+    ])
   })
 
   test("combines multiple flags", () => {

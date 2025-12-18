@@ -47,7 +47,11 @@ describe("CLI Integration", () => {
     })
 
     test("should build correct INSERT SQL for recording migration", () => {
-      const sql = buildRecordMigrationSql("002_seed.sql", "abc123def456", 1700000000000)
+      const sql = buildRecordMigrationSql(
+        "002_seed.sql",
+        "abc123def456",
+        1700000000000,
+      )
       expect(sql).toContain("INSERT INTO _openauth_migrations")
       expect(sql).toContain("002_seed.sql")
       expect(sql).toContain("abc123def456")
