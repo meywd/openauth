@@ -183,7 +183,7 @@ function executeSql(
   options: WranglerOptions,
 ): { success: boolean; output?: string; error?: string } {
   const args = buildWranglerArgs(dbName, options)
-  args.push("--command", sql)
+  args.push("--command", sql, "--json")
 
   const result = spawnSync("wrangler", args, {
     encoding: "utf-8",
@@ -955,49 +955,41 @@ function parseClientsFromOutput(
 ): Array<{ id: string; name: string; tenant_id: string }> {
   const clients: Array<{ id: string; name: string; tenant_id: string }> = []
 
-  // D1 output format varies - try to parse JSON or table format
-  const lines = output.trim().split("\n")
+  try {
+    // Wrangler --json output format: [{ results: [...], success: true, ... }]
+    const data = JSON.parse(output)
 
-  for (const line of lines) {
-    // Try JSON format first
-    try {
-      const data = JSON.parse(line)
-      if (Array.isArray(data)) {
-        for (const row of data) {
-          if (row.id && row.name) {
-            clients.push({
-              id: row.id,
-              name: row.name,
-              tenant_id: row.tenant_id || "default",
-            })
+    // Handle array of query results
+    if (Array.isArray(data)) {
+      for (const queryResult of data) {
+        if (queryResult.results && Array.isArray(queryResult.results)) {
+          for (const row of queryResult.results) {
+            if (row.id && row.name) {
+              clients.push({
+                id: row.id,
+                name: row.name,
+                tenant_id: row.tenant_id || "default",
+              })
+            }
           }
         }
-        continue
-      } else if (data.id && data.name) {
-        clients.push({
-          id: data.id,
-          name: data.name,
-          tenant_id: data.tenant_id || "default",
-        })
-        continue
       }
-    } catch {
-      // Not JSON, try other formats
     }
-
-    // Try parsing table/pipe-delimited format
-    // Format: id | name | tenant_id
-    const parts = line.split("|").map((p) => p.trim())
-    if (parts.length >= 2) {
-      const id = parts[0]
-      const name = parts[1]
-      // Skip header rows
-      if (id && name && id !== "id" && !id.startsWith("-")) {
-        clients.push({
-          id,
-          name,
-          tenant_id: parts[2] || "default",
-        })
+  } catch {
+    // Fallback: try line-by-line parsing for non-JSON output
+    const lines = output.trim().split("\n")
+    for (const line of lines) {
+      try {
+        const row = JSON.parse(line)
+        if (row.id && row.name) {
+          clients.push({
+            id: row.id,
+            name: row.name,
+            tenant_id: row.tenant_id || "default",
+          })
+        }
+      } catch {
+        // Skip non-JSON lines
       }
     }
   }
