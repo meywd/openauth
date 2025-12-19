@@ -474,7 +474,9 @@ function migrate(args: string[]) {
     process.exit(1)
   }
   if (parsed.isLocal && parsed.isPreview) {
-    console.error("Error: --preview requires --remote (cannot use with --local)")
+    console.error(
+      "Error: --preview requires --remote (cannot use with --local)",
+    )
     process.exit(1)
   }
   // --preview requires --remote in wrangler
@@ -678,7 +680,9 @@ function status(args: string[]) {
     process.exit(1)
   }
   if (parsed.isLocal && parsed.isPreview) {
-    console.error("Error: --preview requires --remote (cannot use with --local)")
+    console.error(
+      "Error: --preview requires --remote (cannot use with --local)",
+    )
     process.exit(1)
   }
   // --preview requires --remote in wrangler
@@ -768,7 +772,9 @@ function seed(args: string[]) {
     process.exit(1)
   }
   if (parsed.isLocal && parsed.isPreview) {
-    console.error("Error: --preview requires --remote (cannot use with --local)")
+    console.error(
+      "Error: --preview requires --remote (cannot use with --local)",
+    )
     process.exit(1)
   }
   // --preview requires --remote in wrangler
@@ -830,7 +836,9 @@ async function bootstrapSecrets(args: string[]) {
     process.exit(1)
   }
   if (parsed.isLocal && parsed.isPreview) {
-    console.error("Error: --preview requires --remote (cannot use with --local)")
+    console.error(
+      "Error: --preview requires --remote (cannot use with --local)",
+    )
     process.exit(1)
   }
   // --preview requires --remote in wrangler
