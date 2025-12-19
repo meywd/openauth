@@ -396,7 +396,7 @@ Usage:
 Options:
   --local              Apply to local D1 database (for development)
   --remote             Apply to remote D1 database (production)
-  --preview            Apply to preview D1 database
+  --preview            Apply to remote preview D1 database (implies --remote)
   --config, -c <file>  Use a specific wrangler config file
   --no-seed            Skip seed data (migrate only applies schema)
   --force              Force re-run all migrations (ignores tracking)
@@ -405,7 +405,7 @@ Examples:
   openauth migrate                       # Auto-detect from wrangler config
   openauth migrate --local               # Local database
   openauth migrate --remote              # Remote database
-  openauth migrate --preview             # Preview database
+  openauth migrate --preview             # Remote preview database
   openauth migrate --no-seed --local     # Skip seed data
   openauth migrate my-auth-db --remote   # Specify database name
   openauth status --local                # Show which migrations are applied
@@ -469,14 +469,17 @@ function checkWrangler() {
 function migrate(args: string[]) {
   const parsed = parseArgsWithValidation(args)
 
-  const modeCount = [parsed.isLocal, parsed.isRemote, parsed.isPreview].filter(
-    Boolean,
-  ).length
-  if (modeCount > 1) {
-    console.error(
-      "Error: Cannot specify more than one of --local, --remote, or --preview",
-    )
+  if (parsed.isLocal && parsed.isRemote) {
+    console.error("Error: Cannot specify both --local and --remote")
     process.exit(1)
+  }
+  if (parsed.isLocal && parsed.isPreview) {
+    console.error("Error: --preview requires --remote (cannot use with --local)")
+    process.exit(1)
+  }
+  // --preview requires --remote in wrangler
+  if (parsed.isPreview && !parsed.isRemote) {
+    parsed.isRemote = true
   }
 
   const dbName = resolveDbName(parsed)
@@ -491,10 +494,10 @@ function migrate(args: string[]) {
 
   const target = parsed.isLocal
     ? " (local)"
-    : parsed.isRemote
-      ? " (remote)"
-      : parsed.isPreview
-        ? " (preview)"
+    : parsed.isPreview
+      ? " (preview)"
+      : parsed.isRemote
+        ? " (remote)"
         : ""
 
   // Get all migration files
@@ -670,14 +673,17 @@ function migrate(args: string[]) {
 function status(args: string[]) {
   const parsed = parseArgsWithValidation(args)
 
-  const modeCount = [parsed.isLocal, parsed.isRemote, parsed.isPreview].filter(
-    Boolean,
-  ).length
-  if (modeCount > 1) {
-    console.error(
-      "Error: Cannot specify more than one of --local, --remote, or --preview",
-    )
+  if (parsed.isLocal && parsed.isRemote) {
+    console.error("Error: Cannot specify both --local and --remote")
     process.exit(1)
+  }
+  if (parsed.isLocal && parsed.isPreview) {
+    console.error("Error: --preview requires --remote (cannot use with --local)")
+    process.exit(1)
+  }
+  // --preview requires --remote in wrangler
+  if (parsed.isPreview && !parsed.isRemote) {
+    parsed.isRemote = true
   }
 
   const dbName = resolveDbName(parsed)
@@ -692,10 +698,10 @@ function status(args: string[]) {
 
   const target = parsed.isLocal
     ? " (local)"
-    : parsed.isRemote
-      ? " (remote)"
-      : parsed.isPreview
-        ? " (preview)"
+    : parsed.isPreview
+      ? " (preview)"
+      : parsed.isRemote
+        ? " (remote)"
         : ""
 
   console.log(`\nOpenAuth Migration Status - ${dbName}${target}`)
@@ -757,14 +763,17 @@ function status(args: string[]) {
 function seed(args: string[]) {
   const parsed = parseArgsWithValidation(args)
 
-  const modeCount = [parsed.isLocal, parsed.isRemote, parsed.isPreview].filter(
-    Boolean,
-  ).length
-  if (modeCount > 1) {
-    console.error(
-      "Error: Cannot specify more than one of --local, --remote, or --preview",
-    )
+  if (parsed.isLocal && parsed.isRemote) {
+    console.error("Error: Cannot specify both --local and --remote")
     process.exit(1)
+  }
+  if (parsed.isLocal && parsed.isPreview) {
+    console.error("Error: --preview requires --remote (cannot use with --local)")
+    process.exit(1)
+  }
+  // --preview requires --remote in wrangler
+  if (parsed.isPreview && !parsed.isRemote) {
+    parsed.isRemote = true
   }
 
   const dbName = resolveDbName(parsed)
@@ -789,10 +798,10 @@ function seed(args: string[]) {
 
   const target = parsed.isLocal
     ? " (local)"
-    : parsed.isRemote
-      ? " (remote)"
-      : parsed.isPreview
-        ? " (preview)"
+    : parsed.isPreview
+      ? " (preview)"
+      : parsed.isRemote
+        ? " (remote)"
         : ""
 
   console.log(`Applying seed data to ${dbName}${target}...`)
@@ -816,14 +825,17 @@ function seed(args: string[]) {
 async function bootstrapSecrets(args: string[]) {
   const parsed = parseArgsWithValidation(args)
 
-  const modeCount = [parsed.isLocal, parsed.isRemote, parsed.isPreview].filter(
-    Boolean,
-  ).length
-  if (modeCount > 1) {
-    console.error(
-      "Error: Cannot specify more than one of --local, --remote, or --preview",
-    )
+  if (parsed.isLocal && parsed.isRemote) {
+    console.error("Error: Cannot specify both --local and --remote")
     process.exit(1)
+  }
+  if (parsed.isLocal && parsed.isPreview) {
+    console.error("Error: --preview requires --remote (cannot use with --local)")
+    process.exit(1)
+  }
+  // --preview requires --remote in wrangler
+  if (parsed.isPreview && !parsed.isRemote) {
+    parsed.isRemote = true
   }
 
   const dbName = resolveDbName(parsed)
@@ -838,10 +850,10 @@ async function bootstrapSecrets(args: string[]) {
 
   const target = parsed.isLocal
     ? " (local)"
-    : parsed.isRemote
-      ? " (remote)"
-      : parsed.isPreview
-        ? " (preview)"
+    : parsed.isPreview
+      ? " (preview)"
+      : parsed.isRemote
+        ? " (remote)"
         : ""
 
   console.log(`\nOpenAuth Bootstrap Secrets - ${dbName}${target}`)
