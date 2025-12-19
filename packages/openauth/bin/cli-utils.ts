@@ -86,6 +86,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   const result: ParsedArgs = {
     isLocal: false,
     isRemote: false,
+    isPreview: false,
     withSeed: true,
     force: false,
   }
