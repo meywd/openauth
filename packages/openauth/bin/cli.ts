@@ -876,7 +876,9 @@ async function bootstrapSecrets(args: string[]) {
   }
 
   console.log("\n" + "=".repeat(50))
-  console.log("IMPORTANT: Save these secrets now! They cannot be retrieved later.")
+  console.log(
+    "IMPORTANT: Save these secrets now! They cannot be retrieved later.",
+  )
   console.log("=".repeat(50))
 
   for (const client of generatedSecrets) {
@@ -886,7 +888,9 @@ async function bootstrapSecrets(args: string[]) {
   }
 
   console.log("\n" + "=".repeat(50))
-  console.log(`Bootstrap complete! Generated ${generatedSecrets.length} secret(s).`)
+  console.log(
+    `Bootstrap complete! Generated ${generatedSecrets.length} secret(s).`,
+  )
 }
 
 /**
