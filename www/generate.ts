@@ -553,20 +553,7 @@ function renderSignatureAsType(signature: TypeDoc.SignatureReflection) {
 }
 
 function renderParameter(parameter: TypeDoc.ParameterReflection) {
-  if (parameter.defaultValue && parameter.defaultValue !== "{}") {
-    throw new Error(
-      [
-        `Unsupported default value "${parameter.defaultValue}" for name "${parameter.name}".`,
-        ``,
-        `Function signature parameters can be defined as optional in one of two ways:`,
-        ` - flag.isOptional is set, ie. "(args?: FooArgs)"`,
-        ` - defaultValue is set, ie. "(args: FooArgs = {})`,
-        ``,
-        `But in this case, the default value is not "{}". Hence not supported.`,
-      ].join("\n"),
-    )
-  }
-
+  // Parameters with default values are treated as optional
   return [
     parameter.type?.type === "tuple" ? "..." : "",
     parameter.name,
