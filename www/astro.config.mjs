@@ -5,11 +5,13 @@ import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
 import config from "./config"
 
-const url = "https://openauth.js.org"
+const url = process.env.SITE_URL || "https://openauth.js.org"
+const base = process.env.BASE_PATH || undefined
 
 // https://astro.build/config
 export default defineConfig({
   site: url,
+  base: base,
   trailingSlash: "always",
   devToolbar: {
     enabled: false,

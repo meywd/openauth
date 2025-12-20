@@ -24,6 +24,9 @@ jobs:
         uses: withastro/action@v3
         with:
           path: www
+        env:
+          SITE_URL: https://al-ummah-now.github.io
+          BASE_PATH: /openauth
 
   deploy:
     needs: build
