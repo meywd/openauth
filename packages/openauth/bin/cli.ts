@@ -868,6 +868,21 @@ async function bootstrapSecrets(args: string[]) {
   console.log(`\nOpenAuth Bootstrap Secrets - ${dbName}${target}`)
   console.log("=".repeat(50))
 
+  if (parsed.debug) {
+    // First list all clients
+    console.log("\n[DEBUG] Listing all clients...")
+    const allClientsResult = executeSql(
+      dbName,
+      "SELECT id, name, client_secret_hash FROM oauth_clients",
+      options,
+    )
+    console.log("[DEBUG] All clients query success:", allClientsResult.success)
+    console.log("[DEBUG] All clients raw output:", allClientsResult.output)
+    if (allClientsResult.error) {
+      console.log("[DEBUG] All clients error:", allClientsResult.error)
+    }
+  }
+
   const sql =
     "SELECT id, name, tenant_id FROM oauth_clients WHERE client_secret_hash IS NULL OR client_secret_hash = ''"
 
