@@ -710,7 +710,9 @@ function renderTypescriptType(type: TypeDoc.ReferenceType) {
   return [
     `<code class="primitive">${type.name}</code>`,
     `<code class="symbol">&lt;</code>`,
-    type.typeArguments?.map((t) => renderType(t)).join(", "),
+    type.typeArguments
+      ?.map((t) => renderType(t))
+      .join(`<code class="symbol">, </code>`),
     `<code class="symbol">&gt;</code>`,
   ].join("")
 }
