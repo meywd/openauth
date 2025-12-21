@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.14] - 2025-12-21
+
+### Added
+
+- add --debug flag for CLI troubleshooting
+- add --preview flag for wrangler D1 preview databases
+- add bootstrap-secrets CLI command for seeded clients
+- add CLI tests and fix recordMigration false warning
+- add RTL and i18n support to UI components
+
+### Fixed
+
+- only deploy to pages from master/main branch
+- escape angle brackets in JSDoc comment for MDX
+- wrap comma in code tag for typescript type args
+- support any default value in docs generator
+- add bun setup for docs build
+- use manual build steps for better error visibility
+- support custom site URL and base path for fork docs
+- debug flag lists all clients first
+- use --json flag for wrangler D1 output parsing
+- buildWranglerArgs handles --preview with --remote together
+- initialize isPreview in parseArgs default result
+- --preview flag requires --remote for wrangler D1
+- adjust scrap test timing to stay within 5s timeout
+- increase TTL in scrap test to prevent flaky failures
+- remove duplicate role seeds from schema file
+- add missing user_system record to seed data
+
+
 ## [1.0.13] - 2025-12-17
 
 ### Fixed
@@ -427,7 +457,8 @@ The following is the changelog from the upstream OpenAuth project.
 
 - 515635f: rename package
 
-[Unreleased]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.13...HEAD
+[Unreleased]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.14...HEAD
+[1.0.14]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.13...v1.0.14
 [1.0.13]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.12...v1.0.13
 [1.0.12]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.11...v1.0.12
 [1.0.11]: https://github.com/Al-Ummah-Now/openauth/compare/v1.0.10...v1.0.11
