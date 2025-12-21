@@ -1,5 +1,13 @@
 # @al-ummah-now/openauth
 
+## 0.4.4
+
+### Patch Changes
+
+- 872a4cf: update google icon to comply with branding guidelines
+- 4214416: allow auth style autodetection
+- e89f282: add linkedin adapter
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -35,7 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - increase TTL in scrap test to prevent flaky failures
 - remove duplicate role seeds from schema file
 - add missing user_system record to seed data
-
 
 ## [1.0.13] - 2025-12-17
 
